@@ -1,0 +1,444 @@
+#!/usr/bin/python
+"""
+usage: gen_ipus_addr_decode [options] <uhal_address_table.xml>
+
+The script generates the address select logic in the
+file for the ipbus system.
+
+The script takes an uHAL compliant XML input file and prints out the vhdl module.
+
+Note that full address decoding is not performed (would be very
+inefficient with 32b address space), so slaves will appear at many
+locations.
+
+options:
+   -v, --verbose                            verbose
+   -d  --debug                              debug output
+   -t <file>, --template=<file>             uses a different vhdl template file
+                                            (default
+                                            /opt/cactus/etc/uhal/tools/ipbus_addr_decode.vhd)
+"""
+
+from __future__ import print_function
+
+import getopt
+import sys
+import os.path
+import time
+import logging
+import math
+import uhal
+
+import StringIO
+
+#===========================================================================================
+# In Python 3 "xrange" doesn't exist, since Python 3's "range" is just as efficient as Python 2's "xrange"
+if (sys.version_info[0] > 2):
+    xrange = range
+
+        
+
+#===========================================================================================
+
+EXIT_CODE_INCORRECT_ARGUMENTS = 1
+EXIT_CODE_ARG_PARSING_ERROR   = 2
+EXIT_CODE_NODE_ADDRESS_ERRORS = 3
+
+
+def padHex(n):
+    return "0x" + hex(n)[2:].zfill(8)
+
+def generateRecord(name,members,description,addr_order,outFileName):
+    outfile = open(outFileName,'a')
+    
+    #Generate and print a VHDL record
+    outfile.write("  type " + name + " is record\n")
+    maxNameLength = 25
+    maxTypeLength = 12
+    for member in members:
+        if len(member) > maxNameLength:
+            maxNameLength = len(member)
+        if len(members[member]) > maxTypeLength:
+            maxTypeLength = len(members[member])
+    for member in sorted (addr_order):        
+        try:
+            members[member]
+            outfile.write("    " + member + "".ljust(maxNameLength-len(member),' ') + "  : ")
+            outfile.write(str(members[member]+";").ljust(maxTypeLength+1,' '))
+            if len(description[member]) > 0:
+                outfile.write("  -- "+description[member])
+            outfile.write("\n")
+        except KeyError:
+            None
+    outfile.write("  end record "+name+";\n\n")
+    outfile.close()
+
+def getBitRange(mask):
+    bits = bin(mask)[2:].zfill(32)[::-1]
+    start = -1
+    end = -1    
+    for i in range(len(bits)-1,-1,-1):
+        if start == -1:
+            if bits[i] == '1':
+                start = i
+        elif end == -1:
+            if bits[i] == '0' :
+                end = i+1
+                break
+    if end == -1:
+        end = 0
+    if start == end:
+        return str(start).rjust(2)
+    else:
+        return str(start).rjust(2,' ') +" downto "+str(end).rjust(2,' ')
+
+
+    
+def traverseTree(Node,padding,baseAddress,baseName,outFileName):
+    global action_ops
+    global readwrite_ops
+    baseName=Node.getPath()
+    package_mon_entries = dict()
+    package_ctrl_entries = dict()
+    package_description = dict()
+    package_addr_order = dict()
+    for childName in Node.getNodes():
+        name = childName
+        childNode = Node.getNode(childName)
+        package_addr_order[name] = ((childNode.getAddress()-baseAddress) << 32) + childNode.getMask()
+        if childName.count('.') == 0:            
+            if len(childNode.getNodes()) != 0 :
+                child_records = traverseTree(childNode,padding+"\t",baseAddress,baseName,outFileName)
+                package_description[name] = ""
+                try:
+                    child_records["mon"]
+                    package_mon_entries[name] = (childNode.getPath()[4:]).replace('.','_')+"_MON_t"
+                except KeyError:
+                    None
+                try:
+                    child_records["ctrl"]
+                    package_ctrl_entries[name] = (childNode.getPath()[4:]).replace('.','_')+"_CTRL_t"
+                except KeyError:
+                    None
+            else:                
+                bitCount = bin(childNode.getMask())[2:].count('1')
+                package_entries = ""
+                if bitCount == 1:
+                    package_entries = "std_logic"
+                else:
+                    package_entries = "std_logic_vector(" + str(bitCount-1).rjust(2,' ') + " downto  0)"
+
+                package_description[name] = childNode.getDescription() 
+                bits = getBitRange(childNode.getMask())
+                
+                local_address=childNode.getAddress()-baseAddress
+                local_name=childNode.getPath()[len("TOP."):]
+                local_name=local_name[local_name.find('.')+1:]
+                if childNode.getPermission() == uhal.NodePermission.READ:
+                    package_mon_entries[name] = package_entries
+                    if read_ops.has_key(local_address):
+                        read_ops[local_address] = read_ops[local_address] + str("localRdData("+bits+")")+" <= Mon."+local_name+"; --"+childNode.getDescription()+"\n"
+                    else:
+                        read_ops[local_address] =                           str("localRdData("+bits+")")+" <= Mon."+local_name+"; --"+childNode.getDescription()+"\n"
+                elif childNode.getPermission() == uhal.NodePermission.READWRITE:
+#                    package_mon_entries[name]  = package_entries
+                    package_ctrl_entries[name] = package_entries
+                    if read_ops.has_key(local_address):
+                        read_ops[local_address] = read_ops[local_address] + str("localRdData("+bits+")")+" <= "+"reg_data("+str(local_address).rjust(2)+")("+bits+"); --"+childNode.getDescription()+"\n"
+                    else:
+                        read_ops[local_address] =                           str("localRdData("+bits+")")+" <= "+"reg_data("+str(local_address).rjust(2)+")("+bits+"); --"+childNode.getDescription()+"\n"
+                    if write_ops.has_key(local_address):
+                        write_ops[local_address] = write_ops[local_address] + str("reg_data("+str(local_address).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+childNode.getDescription()+"\n"
+                    else:
+                        write_ops[local_address] =                            str("reg_data("+str(local_address).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+childNode.getDescription()+"\n"
+
+                    readwrite_ops+=("Ctrl."+local_name) + " <= reg_data("+str(local_address).rjust(2)+")("+bits+");\n"
+
+                elif childNode.getPermission() == uhal.NodePermission.WRITE:
+                    package_ctrl_entries[name] = package_entries
+                    if write_ops.has_key(local_address):
+                        write_ops[local_address] = write_ops[local_address] + ("Ctrl."+local_name) + " <= localWrData("+bits+");\n"
+                    else:                                                     
+                        write_ops[local_address] =                            ("Ctrl."+local_name) + " <= localWrData("+bits+");\n"
+                    
+                    #determin if this is a vector or a single entry
+                    if bits.find(" ") > 0:
+                        action_ops+="Ctrl." + local_name + " <= (others => '0');\n"
+                    else:
+                        action_ops+="Ctrl." + local_name + " <= '0';\n"
+
+                    
+    ret = dict()
+    if bool(package_mon_entries):
+        ret["mon"] = generateRecord((baseName[4:]).replace('.','_')+"_MON_t",package_mon_entries,package_description,package_addr_order,outFileName)
+    if bool(package_ctrl_entries):
+        ret["ctrl"] = generateRecord((baseName[4:]).replace('.','_')+"_CTRL_t",package_ctrl_entries,package_description,package_addr_order,outFileName)
+
+    return ret
+
+def sortByBit(line):
+    assignmentPos = line.find("<=")
+    if assignmentPos < 0:
+        return assignmentPos
+
+    numberStart = line[0:assignmentPos].rfind("(")+1
+    numberEnd = line[numberStart:assignmentPos].find("downto");
+    if numberEnd < 0:        
+        numberEnd = line[numberStart:assignmentPos].find(")");
+    if numberEnd < 0:
+        return 0
+    numberEnd+=numberStart
+    return int(line[numberStart:numberEnd])
+    
+def generateAlignedCase(operations):
+    output = StringIO.StringIO()
+    newAssignmentPos = 0;
+    newAssignmentLength = 0;
+    for addr in operations:
+        #find the position of the "<=" in each line so we can align them
+        #find the max length of assignment names so we can align to that as well
+        for line in operations[addr].split('\n'):
+            assignmentPos = line.find("<=")
+            if assignmentPos > newAssignmentPos:
+                newAssignmentPos = assignmentPos;            
+            assignmentLength = line[assignmentPos:].find(";")
+            if assignmentLength > newAssignmentLength:
+                newAssignmentLength = assignmentLength;            
+
+    for addr in operations:
+        output.write("        when x\""+hex(addr)[2:]+"\" =>\n");                    
+        for line in sorted(operations[addr].split('\n'),key = sortByBit):                
+            if line.find("<=") > 0:
+                preAssignment = line[0:line.find("<=")-1]
+                line=line[line.find("<=")+2:]
+                assignment = line[0:line.find(";")]
+                line=line[line.find(";")+1:]
+                output.write("          "+
+                             preAssignment.ljust(newAssignmentPos)+
+                             " <= "+
+                             str(assignment+";").ljust(newAssignmentLength)+
+                             "    "+
+                             line+
+                             "\n")
+    return output.getvalue()
+                
+
+
+def generateRegMap(baseName,r_ops,rw_ops,w_ops,a_ops):
+
+    regMapSize=0
+    if max(r_ops,key=int) > regMapSize:
+        regMapSize = max(r_ops,key=int)
+    if max(w_ops,key=int) > regMapSize:
+        regMapSize = max(w_ops,key=int)
+    
+    
+    regAddrRange=str(int(math.floor(math.log(regMapSize,2))))
+            
+    outFile=open(baseName+"_map.vhd",'w')
+    outFile.write("--This file was auto-generated.\n")
+    outFile.write("--Modifications might be lost.\n")
+    outFile.write("library ieee;\n")
+    outFile.write("use ieee.std_logic_1164.all;\n")
+    outFile.write("use ieee.numeric_std.all;\n")
+    outFile.write("use work.AXIRegPkg.all;\n")
+    outFile.write("use work.types.all;\n")
+    outFile.write("use work."+baseName+"_Ctrl.all;\n")
+    outFile.write("entity "+baseName+"_interface is\n")
+    outFile.write("  port (\n")
+    outFile.write("    clk_axi          : in  std_logic;\n")
+    outFile.write("    reset_axi_n      : in  std_logic;\n")
+    outFile.write("    slave_readMOSI   : in  AXIReadMOSI;\n")
+    outFile.write("    slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;\n")
+    outFile.write("    slave_writeMOSI  : in  AXIWriteMOSI;\n")
+    outFile.write("    slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;\n")
+    outFile.write("    Mon              : in  "+baseName+"_Mon_t;\n")
+    outFile.write("    Ctrl             : out "+baseName+"_Ctrl_t\n")
+    outFile.write("    );\n")
+    outFile.write("end entity "+baseName+"_interface;\n")
+    outFile.write("architecture behavioral of "+baseName+"_interface is\n")
+    outFile.write("  signal localAddress       : slv_32_t;\n")
+    outFile.write("  signal localRdData        : slv_32_t;\n")
+    outFile.write("  signal localRdData_latch  : slv_32_t;\n")
+    outFile.write("  signal localWrData        : slv_32_t;\n")
+    outFile.write("  signal localWrEn          : std_logic;\n")
+    outFile.write("  signal localRdReq         : std_logic;\n")
+    outFile.write("  signal localRdAck         : std_logic;\n")
+    outFile.write("\n")  
+    outFile.write("\n")
+    outFile.write("  signal reg_data :  slv32_array_t(integer range 0 to "+str(regMapSize)+");\n")
+    outFile.write("  constant Default_reg_data : slv32_array_t(integer range 0 to "+str(regMapSize)+") := (others => x\"00000000\");\n")
+    outFile.write("begin  -- architecture behavioral\n")
+    outFile.write("\n");
+    outFile.write("  -------------------------------------------------------------------------------\n")
+    outFile.write("  -- AXI \n")
+    outFile.write("  -------------------------------------------------------------------------------\n")
+    outFile.write("  -------------------------------------------------------------------------------\n")
+    outFile.write("  AXIRegBridge : entity work.axiLiteReg\n")
+    outFile.write("    port map (\n")
+    outFile.write("      clk_axi     => clk_axi,\n")
+    outFile.write("      reset_axi_n => reset_axi_n,\n")
+    outFile.write("      readMOSI    => slave_readMOSI,\n")
+    outFile.write("      readMISO    => slave_readMISO,\n")
+    outFile.write("      writeMOSI   => slave_writeMOSI,\n")
+    outFile.write("      writeMISO   => slave_writeMISO,\n")
+    outFile.write("      address     => localAddress,\n")
+    outFile.write("      rd_data     => localRdData_latch,\n")
+    outFile.write("      wr_data     => localWrData,\n")
+    outFile.write("      write_en    => localWrEn,\n")
+    outFile.write("      read_req    => localRdReq,\n")
+    outFile.write("      read_ack    => localRdAck);\n")
+    outFile.write("\n")
+    outFile.write("  latch_reads: process (clk_axi) is\n")
+    outFile.write("  begin  -- process latch_reads\n")
+    outFile.write("    if clk_axi'event and clk_axi = '1' then  -- rising clock edge\n")
+    outFile.write("      if localRdReq = '1' then\n")
+    outFile.write("        localRdData_latch <= localRdData;        \n")
+    outFile.write("      end if;\n")
+    outFile.write("    end if;\n")
+    outFile.write("  end process latch_reads;\n")
+    outFile.write("  reads: process (localRdReq,localAddress,reg_data) is\n")
+    outFile.write("  begin  -- process reads\n")
+    outFile.write("    localRdAck  <= '0';\n")
+    outFile.write("    localRdData <= x\"00000000\";\n")
+    outFile.write("    if localRdReq = '1' then\n")
+    outFile.write("      localRdAck  <= '1';\n")
+    outFile.write("      case localAddress("+regAddrRange+" downto 0) is\n")
+
+    if len(r_ops) != 0:
+        outFile.write(generateAlignedCase(r_ops))
+                
+    outFile.write("        when others =>\n")
+    outFile.write("          localRdData <= x\"00000000\";\n")
+    outFile.write("      end case;\n")
+    outFile.write("    end if;\n")
+    outFile.write("  end process reads;\n")
+
+    if len(rw_ops) > 0:
+        outFile.write("\n\n\n");
+        outFile.write("  -- Register mapping to ctrl structures\n");
+        newAssignmentPos = 0;
+        newAssignmentLength = 0;
+        for line in rw_ops.split("\n"):
+            assignmentPos = line.find("<=")
+            if assignmentPos > newAssignmentPos:
+                newAssignmentPos = assignmentPos;            
+            assignmentLength = line[assignmentPos:].find(";")
+            if assignmentLength > newAssignmentLength:
+                newAssignmentLength = assignmentLength;
+
+        for line in rw_ops.split("\n"):
+            if line.find("<=") > 0:
+                preAssignment = line[0:line.find("<=")-1]
+                line=line[line.find("<=")+2:]
+                assignment = line[0:line.find(";")]
+                line=line[line.find(";")+1:]
+                outFile.write("  "+
+                              preAssignment.ljust(newAssignmentPos)+
+                              " <= "+
+                              str(assignment+";").ljust(newAssignmentLength)+
+                              "    "+
+                              line+
+                              "\n")
+
+    outFile.write("\n\n\n");
+    outFile.write("  reg_writes: process (clk_axi, reset_axi_n) is\n")
+    outFile.write("  begin  -- process reg_writes\n")
+    outFile.write("    if reset_axi_n = '0' then                 -- asynchronous reset (active low)\n")
+    outFile.write("      reg_data <= default_reg_data;\n")
+    outFile.write("    elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge\n")
+
+    for line in a_ops.split("\n"):
+        outFile.write("      "+line+"\n")
+    
+    outFile.write("      if localWrEn = '1' then\n")
+    outFile.write("        case localAddress("+regAddrRange+" downto 0) is\n")
+ 
+    if len(w_ops) != 0:
+        outFile.write(generateAlignedCase(w_ops))
+
+    outFile.write("          when others => null;\n")
+    outFile.write("        end case;\n")
+    outFile.write("      end if;\n")
+    outFile.write("    end if;\n")
+    outFile.write("  end process reg_writes;\n")
+    outFile.write("\n")
+    outFile.write("end architecture behavioral;\n")
+
+                
+    outFile.close()
+
+def main():    
+
+    global read_ops
+    global write_ops
+    global action_ops
+    global readwrite_ops
+    
+    read_ops = dict(list())
+    readwrite_ops = str()
+    write_ops = dict(list())
+    action_ops = str()
+    
+    # configure logger
+    global log
+    log = logging.getLogger("main")
+    formatter = logging.Formatter('%(name)s %(levelname)s: %(message)s')
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+    log.setLevel(logging.WARNING)
+    uhal.setLogLevelTo(uhal.LogLevel.WARNING)
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "vdh:", ["verbose","debug","help"])
+    except getopt.GetoptError as err:
+        log.critical(__doc__)
+        sys.exit(EXIT_CODE_ARG_PARSING_ERROR)
+    for o, a in opts:
+        if o in ("-v", "--verbose"):
+            log.setLevel(logging.INFO)
+            uhal.setLogLevelTo(uhal.LogLevel.INFO)
+        elif o in ("-d", "--debug"):
+            log.setLevel(logging.DEBUG)
+            uhal.setLogLevelTo(uhal.LogLevel.DEBUG)
+        elif o in ("-h", "--help"):
+            print(__doc__)
+            sys.exit(0)
+
+    # make sure that exactly one argument was given, later assumed to be the xml file name
+    if len(args) != 1:
+        log.critical("Incorrect usage - invalid number of arguments! Make sure that options come before argument.\n" + __doc__)
+        sys.exit(EXIT_CODE_INCORRECT_ARGUMENTS)
+
+    try:
+        device = uhal.getDevice("dummy","ipbusudp-1.3://localhost:12345","file://" + args[0])
+    except Exception:
+        raise Exception("File '%s' does not exist or has incorrect format" % args[0])
+
+    for i in device.getNodes():
+        d = device.getNode(i)
+        if d.getPath().count('.') == 1:
+            action_ops=""
+            read_ops.clear()
+            write_ops.clear()
+            readwrite_ops=""
+            outFileName=d.getPath()
+            outFileBase=outFileName[outFileName.find('.')+1:]
+            outFileName=outFileBase+"_PKG.vhd"
+            outFile=open(outFileName,'w')
+            outFile.write("--This file was auto-generated.\n")
+            outFile.write("--Modifications might be lost.\n")
+            outFile.write("library IEEE;\n")
+            outFile.write("use IEEE.std_logic_1164.all;\n")
+            outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
+            outFile.close()
+            traverseTree(d,"\t",d.getAddress(),d.getPath(),outFileName)
+            outFile=open(outFileName,'a')
+            outFile.write("\n\nend package "+outFileBase+"_CTRL;")
+
+            generateRegMap(outFileBase,read_ops,readwrite_ops,write_ops,action_ops)
+                   
+if __name__ == '__main__':
+    main()
+  
