@@ -206,7 +206,7 @@ def generateAlignedCase(operations):
                 newAssignmentLength = assignmentLength;            
 
     for addr in operations:
-        output.write("        when x\""+hex(addr)[2:]+"\" =>\n");                    
+        output.write("        when "+str(addr)+" => --"+hex(addr)+"\n");                    
         for line in sorted(operations[addr].split('\n'),key = sortByBit):                
             if line.find("<=") > 0:
                 preAssignment = line[0:line.find("<=")-1]
@@ -303,7 +303,8 @@ def generateRegMap(baseName,r_ops,rw_ops,w_ops,a_ops):
     outFile.write("    localRdData <= x\"00000000\";\n")
     outFile.write("    if localRdReq = '1' then\n")
     outFile.write("      localRdAck  <= '1';\n")
-    outFile.write("      case localAddress("+regAddrRange+" downto 0) is\n")
+#    outFile.write("      case to_integer(unsigned(localAddress("+regAddrRange+" downto 0)),"+str(regMapSize)+") is\n")
+    outFile.write("      case to_integer(unsigned(localAddress("+regAddrRange+" downto 0))) is\n")
 
     if len(r_ops) != 0:
         outFile.write(generateAlignedCase(r_ops))
@@ -352,7 +353,8 @@ def generateRegMap(baseName,r_ops,rw_ops,w_ops,a_ops):
         outFile.write("      "+line+"\n")
     
     outFile.write("      if localWrEn = '1' then\n")
-    outFile.write("        case localAddress("+regAddrRange+" downto 0) is\n")
+#    outFile.write("        case to_integer(unsigned(localAddress("+regAddrRange+" downto 0)),"+str(regMapSize)+") is\n")
+    outFile.write("        case to_integer(unsigned(localAddress("+regAddrRange+" downto 0))) is\n")
  
     if len(w_ops) != 0:
         outFile.write(generateAlignedCase(w_ops))
