@@ -162,7 +162,7 @@ def traverseTree(Node,padding,baseAddress,baseName,outFileName):
                         write_ops[local_address] =                            ("Ctrl."+local_name) + " <= localWrData("+bits+");\n"
                     
                     #determin if this is a vector or a single entry
-                    if bits.find(" ") > 0:
+                    if bits.find("downto") > 0:
                         action_ops+="Ctrl." + local_name + " <= (others => '0');\n"
                     else:
                         action_ops+="Ctrl." + local_name + " <= '0';\n"
