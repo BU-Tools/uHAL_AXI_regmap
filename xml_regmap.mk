@@ -3,9 +3,9 @@
 #################################################################################
 export LD_LIBRARY_PATH=/opt/cactus/lib
 SRC_PATH=src
-XML2VHD_PATH=xml_regmap
+XML2VHD_PATH?=xml_regmap
 
-SYM_LNK_XMLS = $(shell find . -type l)
+SYM_LNK_XMLS = $(shell find ./src -type l)
 MAP_OBJS = $(patsubst %.xml, %_map.vhd, $(SYM_LNK_XMLS))
 PKG_OBJS = $(patsubst %.xml, %_PKG.vhd, $(SYM_LNK_XMLS))
 

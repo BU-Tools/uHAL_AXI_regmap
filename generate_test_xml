@@ -2,6 +2,7 @@
 #usage: ./generate_input_xml [source xml file name]
 import sys
 import logging
+import os.path
 
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
 
@@ -33,6 +34,8 @@ def main():
 
     pkg_name=sys.argv[-1]
     xml_file_name=pkg_name+".xml"
+    if os.path.islink(xml_file_name):
+        xml_file_name=os.path.realpath(xml_file_name)
     # address is hard coded to the same value for now. But it shouldn't matter
     generate_test_xml(pkg_name,"0x17000000",xml_file_name,"test.xml")
 
