@@ -65,7 +65,7 @@ begin  -- architecture behavioral
     localRdData <= x"00000000";
     if localRdReq = '1' then
       localRdAck  <= '1';
-      case to_integer(unsigned(localAddress("+regAddrRange+" downto 0))) is
+      case to_integer(unsigned(localAddress(${regAddrRange} downto 0))) is
 
 ${r_ops_output}
 
@@ -83,13 +83,13 @@ ${rw_ops_output}
   reg_writes: process (clk_axi, reset_axi_n) is
   begin  -- process reg_writes
     if reset_axi_n = '0' then                 -- asynchronous reset (active low)
-      reg_data <= default_reg_data;
+${def_ops_output}
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
 
 ${a_ops_output}
       
       if localWrEn = '1' then
-        case to_integer(unsigned(localAddress("+regAddrRange+" downto 0))) is
+        case to_integer(unsigned(localAddress(${regAddrRange} downto 0))) is
 ${w_ops_output}
           when others => null;
         end case;

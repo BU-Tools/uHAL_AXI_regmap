@@ -28,6 +28,7 @@ class node(object):
         self.description = uhalNode.getDescription()
         self.permission = self.readpermission(uhalNode.getPermission())
         self.fwinfo = uhalNode.getFirmwareInfo()
+        self.parameters = uhalNode.getParameters()
         absolute_address = uhalNode.getAddress()
         self.address = absolute_address - baseAddress
         ##### add children
@@ -186,6 +187,7 @@ class tree(object):
         self.readwrite_ops = str()
         self.write_ops = dict(list())
         self.action_ops = str()
+        self.default_ops = str()
         ##### setup logger
         self.log = logger
         if not self.log:
@@ -221,7 +223,23 @@ class tree(object):
                 outFile.write('\n')
             outFile.write("  end record " + baseName + ";\n\n")
             outFile.close()
-        return
+        ##### TODO: return value here?
+        return 
+
+    def generateDefaultRecord(self, baseName, defaults):
+        with open(self.outFileName,'a') as outfile:
+            outfile.write("  constant DEFAULT_" + baseName + " : " + baseName +" := (\n")
+            padding_size = 27 + (2 * len(baseName))
+            firstLine=True
+            for keys,values in defaults.items():
+                if firstLine:
+                    firstLine=False
+                else:
+                    outfile.write(",\n")
+                outfile.write(" ".ljust(padding_size,' ')+keys+" => "+values)
+            outfile.write("\n ".ljust(padding_size,' ')+");\n")
+            outfile.close()
+        return "DEFAULT_"+baseName
 
     ### Traverse through the tree and generate records in the PKG vhdl
     ### note the padding is not implemented yet
@@ -230,6 +248,7 @@ class tree(object):
             current_node = self.root
         package_mon_entries = dict()
         package_ctrl_entries = dict()
+        package_ctrl_entry_defaults = dict()
         package_description = dict()
         package_addr_order = dict()
         for child in current_node.children:
@@ -240,6 +259,8 @@ class tree(object):
                     package_mon_entries[child.id] = child.getPath().replace('.','_')+'_MON_t'
                 if child_records.has_key('ctrl'):
                     package_ctrl_entries[child.id] = child.getPath().replace('.','_') + '_CTRL_t'
+                if child_records.has_key('ctrl_default'):
+                    package_ctrl_entry_defaults[child.id] = "DEFAULT_"+child.getPath().replace('.','_')+"_CTRL_t"
             else:
                 bitCount = bin(child.mask)[2:].count('1')
                 package_entries = ""
@@ -260,6 +281,11 @@ class tree(object):
                         self.read_ops[child.address] =                           str("localRdData("+bits+")")+" <= Mon."+child.id+"; --"+child.description+"\n"
                 elif child.permission == 'rw':
                     package_ctrl_entries[child.id] = package_entries
+                    ##### store data for default signal
+                    if child.parameters.has_key("default"):
+                        package_ctrl_entry_defaults[child.id] = child.parameters["default"]
+                    else:
+                        package_ctrl_entry_defaults[child.id] = "(others => '0')"
                     if self.read_ops.has_key(child.address):
                         self.read_ops[child.address] = self.read_ops[child.address] + str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.address).rjust(2)+")("+bits+"); --"+child.description+"\n"
                     else:
@@ -268,9 +294,14 @@ class tree(object):
                         self.write_ops[child.address] = self.write_ops[child.address] + str("reg_data("+str(child.address).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
                     else:
                         self.write_ops[child.address] =                            str("reg_data("+str(child.address).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
-
                     self.readwrite_ops+=("Ctrl."+child.id) + " <= reg_data("+str(child.address).rjust(2)+")("+bits+");\n"
+                    self.default_ops+="reg_data("+str(child.address).rjust(2)+")("+bits+") <= "+("CTRL_t."+child.id)+";\n"
                 elif child.permission == 'w':
+                    ##### store data for default signal
+                    if child.parameters.has_key("default"):
+                        package_ctrl_entry_defaults[child.id] = child.parameters["default"]
+                    else:
+                        package_ctrl_entry_defaults[child.id] = "(others => '0')"
                     package_ctrl_entries[child.id] = package_entries
                     if self.write_ops.has_key(child.address):
                         self.write_ops[child.address] = self.write_ops[child.address] + ("Ctrl."+child.id) + " <= localWrData("+bits+");\n"
@@ -289,6 +320,7 @@ class tree(object):
         if package_ctrl_entries:
             baseName = current_node.getPath().replace('.','_')+'_CTRL_t'
             ret['ctrl'] = self.generateRecord(baseName, current_node, package_ctrl_entries, package_description)
+            ret["ctrl_default"] = self.generateDefaultRecord(baseName, package_ctrl_entry_defaults)
         return ret
 
     def generatePkg(self, outFileName=None):
@@ -398,6 +430,15 @@ class tree(object):
             output.write("      "+line+"\n")
         return output.getvalue()
 
+    def generate_def_ops_output(self):
+        output = StringIO.StringIO()
+        for line in self.default_ops.split("\n"):
+            if(len(line)):
+                output.write("      "+line.split("<")[0])
+                output.write(" <= DEFAULT_"+self.root.id+"_"+line.split("=")[1].strip())
+                output.write("\n")
+        return output.getvalue()
+
     ### This should only be called after generatePkg is called
     def generateRegMap(self, outFileName=None, regMapTemplate="template_map.vhd"):
         if (not self.read_ops) or (not self.write_ops):
@@ -408,11 +449,12 @@ class tree(object):
             outFileName = outFileBase+"_map.vhd"
         ##### calculate regMapSize and regAddrRange
         regMapSize=0
-        if max(self.read_ops,key=int) > regMapSize:
+        if len(self.read_ops) and max(self.read_ops,key=int) > regMapSize:
             regMapSize = max(self.read_ops,key=int)
-        if max(self.write_ops,key=int) > regMapSize:
+        if len(self.write_ops) and max(self.write_ops,key=int) > regMapSize:
             regMapSize = max(self.write_ops,key=int)
         regAddrRange=str(int(math.floor(math.log(regMapSize,2))))
+        print("regAddrRange="+regAddrRange)
         ##### read the template from template file
         with open(regMapTemplate) as template_input_file:
             RegMapOutput = template_input_file.read()
@@ -427,8 +469,9 @@ class tree(object):
             "rw_ops_output" : self.generate_rw_ops_output(),
             "a_ops_output"  : self.generate_a_ops_output(),
             "w_ops_output"  : self.generate_w_ops_output(),
+            "def_ops_output": self.generate_def_ops_output(),
         }
-        RegMapOutput = RegMapOutput.safe_substitute(substitute_mapping)
+        RegMapOutput = RegMapOutput.substitute(substitute_mapping)
         ##### output to file
         with open(outFileName,'w') as outFile:
             outFile.write(RegMapOutput)
