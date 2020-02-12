@@ -157,6 +157,9 @@ class array_node(node):
         self.tree = first_entry.tree
         self.children = first_entry.children
         self.entries = {first_index : first_entry}
+        ##### link children to this array_node:
+        for child in self.children:
+            child.parent = self
     
     def isCompatible(self, new_entry):
         new_index = new_entry.extract_index()
@@ -206,7 +209,7 @@ class tree(object):
             ##### Generate and print a VHDL record
             array_index_string = ""
             if current_node.isArray():
-                array_index_string = "arrray(" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+") of "
+                array_index_string = "array(" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+") of "
             outFile.write("  type " + baseName + " is " + array_index_string + "record\n")
             maxNameLength = 25
             maxTypeLength = 12
@@ -226,6 +229,7 @@ class tree(object):
         ##### TODO: return value here?
         return 
 
+    ##### TODO: array type for default records?
     def generateDefaultRecord(self, baseName, defaults):
         with open(self.outFileName,'a') as outfile:
             outfile.write("  constant DEFAULT_" + baseName + " : " + baseName +" := (\n")
@@ -284,8 +288,10 @@ class tree(object):
                     ##### store data for default signal
                     if child.parameters.has_key("default"):
                         package_ctrl_entry_defaults[child.id] = child.parameters["default"]
-                    else:
+                    elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
+                    else:
+                        package_ctrl_entry_defaults[child.id] = "'0'"
                     if self.read_ops.has_key(child.address):
                         self.read_ops[child.address] = self.read_ops[child.address] + str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.address).rjust(2)+")("+bits+"); --"+child.description+"\n"
                     else:
@@ -300,8 +306,10 @@ class tree(object):
                     ##### store data for default signal
                     if child.parameters.has_key("default"):
                         package_ctrl_entry_defaults[child.id] = child.parameters["default"]
-                    else:
+                    elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
+                    else:
+                        package_ctrl_entry_defaults[child.id] = "'0'"
                     package_ctrl_entries[child.id] = package_entries
                     if self.write_ops.has_key(child.address):
                         self.write_ops[child.address] = self.write_ops[child.address] + ("Ctrl."+child.id) + " <= localWrData("+bits+");\n"
