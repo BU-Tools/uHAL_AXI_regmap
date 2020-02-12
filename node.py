@@ -441,7 +441,7 @@ class tree(object):
 
     ### This should only be called after generatePkg is called
     def generateRegMap(self, outFileName=None, regMapTemplate="template_map.vhd"):
-        if (not self.read_ops) or (not self.write_ops):
+        if (not self.read_ops) and (not self.write_ops):
             self.log.critical("generateRegMap must be called after generatePkg!")
             return
         outFileBase = self.root.id
@@ -453,10 +453,12 @@ class tree(object):
             regMapSize = max(self.read_ops,key=int)
         if len(self.write_ops) and max(self.write_ops,key=int) > regMapSize:
             regMapSize = max(self.write_ops,key=int)
-        regAddrRange=str(int(math.floor(math.log(regMapSize,2))))
-        print("regAddrRange="+regAddrRange)
+        if regMapSize>0:
+            regAddrRange=str(int(math.floor(math.log(regMapSize,2))))
+        else:
+            regAddrRange='0'
         ##### read the template from template file
-        with open(regMapTemplate) as template_input_file:
+        with open(os.path.join(sys.path[0],regMapTemplate)) as template_input_file:
             RegMapOutput = template_input_file.read()
             RegMapOutput = Template(RegMapOutput)
             template_input_file.close()
