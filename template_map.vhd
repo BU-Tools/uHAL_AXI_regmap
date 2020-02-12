@@ -65,7 +65,7 @@ begin  -- architecture behavioral
     localRdData <= x"00000000";
     if localRdReq = '1' then
       localRdAck  <= '1';
-      case localAddress(${regAddrRange} downto 0) is
+      case to_integer(unsigned(localAddress("+regAddrRange+" downto 0))) is
 
 ${r_ops_output}
 
@@ -89,7 +89,7 @@ ${rw_ops_output}
 ${a_ops_output}
       
       if localWrEn = '1' then
-        case localAddress(${regAddrRange} downto 0) is
+        case to_integer(unsigned(localAddress("+regAddrRange+" downto 0))) is
 ${w_ops_output}
           when others => null;
         end case;

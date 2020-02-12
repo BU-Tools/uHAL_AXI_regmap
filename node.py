@@ -343,7 +343,7 @@ class tree(object):
                 if assignmentLength > newAssignmentLength:
                     newAssignmentLength = assignmentLength;            
         for addr in operations:
-            output.write("        when x\""+hex(addr)[2:]+"\" =>\n");                    
+            output.write("        when "+str(addr)+" => --"+hex(addr)+"\n");
             for line in sorted(operations[addr].split('\n'),key = tree.sortByBit):                
                 if line.find("<=") > 0:
                     preAssignment = line[0:line.find("<=")-1]
