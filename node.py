@@ -277,7 +277,7 @@ class tree(object):
                     else:                                                     
                         self.write_ops[child.address] =                            ("Ctrl."+child.id) + " <= localWrData("+bits+");\n"
                     #determin if this is a vector or a single entry
-                    if bits.find(" ") > 0:
+                    if bits.find("downto") > 0:
                         self.action_ops+="Ctrl." + child.id + " <= (others => '0');\n"
                     else:
                         self.action_ops+="Ctrl." + child.id + " <= '0';\n"
