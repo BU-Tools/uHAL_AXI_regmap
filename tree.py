@@ -24,10 +24,7 @@ class tree(object):
     def generateRecord(self, baseName, current_node, members, description):
         with open(self.outFileName,'a') as outFile:
             ##### Generate and print a VHDL record
-            array_index_string = ""
-            if current_node.isArray():
-                array_index_string = "array(" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+") of "
-            outFile.write("  type " + baseName + " is " + array_index_string + "record\n")
+            outFile.write("  type " + baseName.replace('_ARRAY','') + " is record\n")
             maxNameLength = 25
             maxTypeLength = 12
             sorted_members = sorted(members.items(), key=lambda item: (current_node.getChild(item[0]).address<<32) + current_node.getChild(item[0]).mask)
@@ -41,7 +38,11 @@ class tree(object):
                 if len(description[memberName]) > 0:
                     outFile.write("  -- " + description[memberName])
                 outFile.write('\n')
-            outFile.write("  end record " + baseName + ";\n\n")
+            outFile.write("  end record " + baseName.replace('_ARRAY','') + ";\n")
+            if current_node.isArray():
+                array_index_string = " is array(" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+") of "
+                outFile.write("  type " + baseName + array_index_string + baseName.replace('_ARRAY','') + ";")
+            outFile.write("\n\n")
             outFile.close()
         ##### TODO: return value here?
         return 

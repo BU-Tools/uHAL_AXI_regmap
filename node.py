@@ -155,7 +155,7 @@ class array_node(node):
     def __init__(self, first_entry):
         first_index = first_entry.extract_index()
         assert first_index >= 0
-        self.id = first_entry.id[:first_entry.id.rfind('_')]
+        self.id = first_entry.id[:first_entry.id.rfind('_')] + '_ARRAY'
         self.description = "Array of " + self.id
         self.address = first_entry.address
         self.mask = 0xffffffff
@@ -181,7 +181,7 @@ class array_node(node):
         new_index = new_entry.extract_index()
         ##### TODO: probably should throw an excetion if attempting to add noncompatible array with compatible id?
         if (new_index < 0) or (new_index in self.entries.keys()): return False
-        if not self.id == new_entry.id[:new_entry.id.rfind('_')]: return False
+        if not self.id[:new_entry.id.rfind('_')] == new_entry.id[:new_entry.id.rfind('_')]: return False
         if not self.isIdentical(new_entry): return False 
         return True
 
