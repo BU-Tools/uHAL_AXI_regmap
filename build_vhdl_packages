@@ -28,7 +28,7 @@ import time
 import logging
 import math
 import uhal
-from node import * # import node,arraynode,tree
+from tree import * # import node,arraynode,tree
 
 import StringIO
 
