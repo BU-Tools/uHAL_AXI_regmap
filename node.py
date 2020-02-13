@@ -198,6 +198,6 @@ class array_node(node):
         return ( sorted(keys) == list(range(min(keys),max(keys)+1)) )
 
     ### re-implemented from node
-    def is_Array(self):
+    def isArray(self):
         return True
 
