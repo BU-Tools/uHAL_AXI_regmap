@@ -98,9 +98,9 @@ class tree(object):
                 if child.permission == 'r':
                     package_mon_entries[child.id] = package_entries
                     if self.read_ops.has_key(child.getLocalAddress()):
-                        self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress()] + str("localRdData("+bits+")")+" <= Mon."+child.id+"; --"+child.description+"\n"
+                        self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress()] + str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False)+"; --"+child.description+"\n"
                     else:
-                        self.read_ops[child.getLocalAddress()] =                           str("localRdData("+bits+")")+" <= Mon."+child.id+"; --"+child.description+"\n"
+                        self.read_ops[child.getLocalAddress()] =                           str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False)+"; --"+child.description+"\n"
                 elif child.permission == 'rw':
                     package_ctrl_entries[child.id] = package_entries
                     ##### store data for default signal
@@ -118,8 +118,8 @@ class tree(object):
                         self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + str("reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
                     else:
                         self.write_ops[child.getLocalAddress()] =                            str("reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
-                    self.readwrite_ops+=("Ctrl."+child.id) + " <= reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+");\n"
-                    self.default_ops+="reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+") <= "+("CTRL_t."+child.id)+";\n"
+                    self.readwrite_ops+=("Ctrl."+child.getPath(includeRoot=False)) + " <= reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+");\n"
+                    self.default_ops+="reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+") <= "+("CTRL_t."+child.getPath(includeRoot=False))+";\n"
                 elif child.permission == 'w':
                     ##### store data for default signal
                     if child.parameters.has_key("default"):
@@ -130,14 +130,14 @@ class tree(object):
                         package_ctrl_entry_defaults[child.id] = "'0'"
                     package_ctrl_entries[child.id] = package_entries
                     if self.write_ops.has_key(child.getLocalAddress()):
-                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.id) + " <= localWrData("+bits+");\n"
+                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath()) + " <= localWrData("+bits+");\n"
                     else:                                                     
-                        self.write_ops[child.getLocalAddress()] =                            ("Ctrl."+child.id) + " <= localWrData("+bits+");\n"
+                        self.write_ops[child.getLocalAddress()] =                            ("Ctrl."+child.getPath()) + " <= localWrData("+bits+");\n"
                     #determin if this is a vector or a single entry
                     if bits.find("downto") > 0:
-                        self.action_ops+="Ctrl." + child.id + " <= (others => '0');\n"
+                        self.action_ops+="Ctrl." + child.getPath(includeRoot=False) + " <= (others => '0');\n"
                     else:
-                        self.action_ops+="Ctrl." + child.id + " <= '0';\n"
+                        self.action_ops+="Ctrl." + child.getPath(includeRoot=False) + " <= '0';\n"
 
         ret = {}
         if package_mon_entries:

@@ -86,9 +86,11 @@ class node(object):
     def isArray(self):
         return False
 
-    def getPath(self):
+    def getPath(self, includeRoot=True):
         if self.parent:
-            return self.parent.getPath()+'.'+self.id
+            if not includeRoot and not self.parent.parent:
+                return self.id
+            return self.parent.getPath(includeRoot)+'.'+self.id
         else:
             return self.id
 
