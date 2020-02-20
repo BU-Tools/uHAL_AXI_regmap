@@ -5,8 +5,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.AXIRegPkg.all;
 use work.types.all;
-use work.${baseName}_Ctrl.all;
-entity ${baseName}_interface is
+use work.{{baseName}}_Ctrl.all;
+entity {{baseName}}_interface is
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -14,11 +14,11 @@ entity ${baseName}_interface is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-    Mon              : in  ${baseName}_Mon_t;
-    Ctrl             : out ${baseName}_Ctrl_t
+{% if r_ops_output %}    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output %};
+    Ctrl             : out {{baseName}}_Ctrl_t{% endif %}
     );
-end entity ${baseName}_interface;
-architecture behavioral of ${baseName}_interface is
+end entity {{baseName}}_interface;
+architecture behavioral of {{baseName}}_interface is
   signal localAddress       : slv_32_t;
   signal localRdData        : slv_32_t;
   signal localRdData_latch  : slv_32_t;
@@ -28,8 +28,8 @@ architecture behavioral of ${baseName}_interface is
   signal localRdAck         : std_logic;
 
 
-  signal reg_data :  slv32_array_t(integer range 0 to ${regMapSize});
-  constant Default_reg_data : slv32_array_t(integer range 0 to ${regMapSize}) := (others => x"00000000");
+  signal reg_data :  slv32_array_t(integer range 0 to {{regMapSize}});
+  constant Default_reg_data : slv32_array_t(integer range 0 to {{regMapSize}}) := (others => x"00000000");
 begin  -- architecture behavioral
 
   -------------------------------------------------------------------------------
@@ -65,9 +65,9 @@ begin  -- architecture behavioral
     localRdData <= x"00000000";
     if localRdReq = '1' then
       localRdAck  <= '1';
-      case to_integer(unsigned(localAddress(${regAddrRange} downto 0))) is
+      case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
 
-${r_ops_output}
+{{r_ops_output}}
 
         when others =>
           localRdData <= x"00000000";
@@ -77,24 +77,25 @@ ${r_ops_output}
 
 
 
+{% if w_ops_output %}
   -- Register mapping to ctrl structures
-${rw_ops_output}
+{{rw_ops_output}}
 
   reg_writes: process (clk_axi, reset_axi_n) is
   begin  -- process reg_writes
     if reset_axi_n = '0' then                 -- asynchronous reset (active low)
-${def_ops_output}
+{{def_ops_output}}
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
-
-${a_ops_output}
+{{a_ops_output}}
       
       if localWrEn = '1' then
-        case to_integer(unsigned(localAddress(${regAddrRange} downto 0))) is
-${w_ops_output}
+        case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
+{{w_ops_output}}
           when others => null;
         end case;
       end if;
     end if;
   end process reg_writes;
+{% endif %}
 
 end architecture behavioral;

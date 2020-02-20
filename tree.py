@@ -1,4 +1,5 @@
 from node import *
+from jinja2 import Template
 
 
 class tree(object):
@@ -47,13 +48,19 @@ class tree(object):
         ##### TODO: return value here?
         return 
 
-    ##### TODO: array type for default records?
     def generateDefaultRecord(self, baseName, defaults):
         with open(self.outFileName,'a') as outfile:
             outfile.write("  constant DEFAULT_" + baseName + " : " + baseName +" := (\n")
             padding_size = 27 + (2 * len(baseName))
             firstLine=True
             for keys,values in defaults.items():
+                # if the value is in the format of 0x1, translate it into x'1'
+                if '0x' in values:
+                    values=values.replace('0x','')
+                    if values == '1':
+                        values = "'1'"
+                    else:
+                        values='x"'+values+'"'
                 if firstLine:
                     firstLine=False
                 else:
@@ -130,9 +137,9 @@ class tree(object):
                         package_ctrl_entry_defaults[child.id] = "'0'"
                     package_ctrl_entries[child.id] = package_entries
                     if self.write_ops.has_key(child.getLocalAddress()):
-                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath()) + " <= localWrData("+bits+");\n"
+                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
                     else:                                                     
-                        self.write_ops[child.getLocalAddress()] =                            ("Ctrl."+child.getPath()) + " <= localWrData("+bits+");\n"
+                        self.write_ops[child.getLocalAddress()] =                            ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
                     #determin if this is a vector or a single entry
                     if bits.find("downto") > 0:
                         self.action_ops+="Ctrl." + child.getPath(includeRoot=False) + " <= (others => '0');\n"
@@ -225,7 +232,6 @@ class tree(object):
 
     def generate_rw_ops_output(self):
         output = StringIO.StringIO()
-        output.write("  -- Register mapping to ctrl structures\n")
         newAssignmentPos = 0
         newAssignmentLength = 0
         for line in self.readwrite_ops.split("\n"):
@@ -299,7 +305,7 @@ class tree(object):
             "w_ops_output"  : self.generate_w_ops_output(),
             "def_ops_output": self.generate_def_ops_output(),
         }
-        RegMapOutput = RegMapOutput.substitute(substitute_mapping)
+        RegMapOutput = RegMapOutput.render(substitute_mapping)
         ##### output to file
         with open(outFileName,'w') as outFile:
             outFile.write(RegMapOutput)

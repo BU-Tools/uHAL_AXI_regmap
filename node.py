@@ -6,7 +6,6 @@ import time
 import logging
 import math
 import uhal
-from string import Template
 
 import StringIO
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
