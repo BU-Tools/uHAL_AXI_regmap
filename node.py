@@ -1,6 +1,7 @@
 from __future__ import print_function
 import getopt
 import sys
+import copy
 import os.path
 import time
 import logging
@@ -11,7 +12,7 @@ import StringIO
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
 EXIT_CODE_ARG_PARSING_ERROR   = 2
 EXIT_CODE_NODE_ADDRESS_ERRORS = 3
-EXIT_CODE_NODE_INCONTINUITY = 4
+EXIT_CODE_NODE_INVALID_ARRAY = 4
 
 class node(object):
     def __init__(self, uhalNode, baseAddress, tree=None, parent=None, index=None):
@@ -30,6 +31,7 @@ class node(object):
         self.parameters = uhalNode.getParameters()
         absolute_address = uhalNode.getAddress()
         self.address = absolute_address - baseAddress
+        self.array_head = None
         ##### add children
         for childName in uhalNode.getNodes():
             ### TODO: are we filtering out registers whose ID contains a '.'?
@@ -40,7 +42,7 @@ class node(object):
         for child in self.children:
             if not child.checkContinuity(): 
                 self.tree.log.critical("Critical: Attempting to register multiple array type registers but the indices are not continuous!")
-                sys.exit(EXIT_CODE_NODE_INCONTINUITY)
+                sys.exit(EXIT_CODE_NODE_INVALID_ARRAY)
         ##### sort children by address and mask
         self.children = sorted(self.children, key=lambda child: child.address << 32 + child.mask)
 
@@ -54,23 +56,39 @@ class node(object):
     ### usually allow first layer nodes to have different address etc. but require all children to be exactly same
     def isIdentical(self,other,compareAll=False):
         ##### check attributes for the first level
-        if not self.tree == other.tree: return False
-        if not self.permission == other.permission: return False
-        if not self.fwinfo == other.fwinfo: return False
+        if not self.tree == other.tree: 
+            if self.tree.debug: print("Incompatible array: different owner tree")
+            return False
+        if not self.permission == other.permission:
+            if self.tree.debug: print("Incompatible array: different permission "+self.permission+" vs "+other.permission)
+            return False
+        if not self.fwinfo == other.fwinfo:
+            if self.tree.debug: print("Incompatible array: different fwinfo "+self.fwinfo+" vs "+other.fwinfo)
+            return False
         ##### stricter check for deeper levels
         if compareAll:
-            if not self.id == other.id: return False
-            if not self.address == other.address: return False
-            if not self.mask == other.mask: return False
-            if not self.description == other.description: return False
+            if not self.id == other.id: 
+                if self.tree.debug: print("Incompatible array: different id "+self.id+" vs "+other.id)
+                return False
+            if not self.address == other.address:
+                if self.tree.debug: print("Incompatible array: different address "+str(self.address)+" vs "+str(other.address))
+                return False
+            if not self.mask == other.mask:
+                if self.tree.debug: print("Incompatible array: different mask "+str(self.mask)+" vs "+str(other.mask))
+                return False
+            if not self.description == other.description:
+                if self.tree.debug: print("Incompatible array: different description "+self.description+" vs "+other.description)
+                return False
         ##### compare children, assuming they are sorted by address and id already!
-        if not len(self.children) == len(other.children): return False
+        if not len(self.children) == len(other.children):
+            if self.tree.debug: print("Incompatible array: different len children "+str(len(self.children))+" vs "+str(len(other.children)))
+            return False
         for i_children in range(len(self.children)):
             if not self.children[i_children].isIdentical(other.children[i_children],compareAll=True): return False
         return True
 
     def addChild(self,child):
-        array_index = child.extract_index()
+        array_index = child.extractIndex()
         if array_index >= 0: #### treat it as an array type
             ##### check if it should be appended to an existing child
             for other_child in self.children:
@@ -85,11 +103,14 @@ class node(object):
     def isArray(self):
         return False
 
-    def getPath(self, includeRoot=True):
+    def getPath(self, includeRoot=True, expandArray=False):
         if self.parent:
             if not includeRoot and not self.parent.parent:
                 return self.id
-            return self.parent.getPath(includeRoot)+'.'+self.id
+            elif (not expandArray) and self.parent.array_head:
+                return self.parent.array_head.getPath(includeRoot,expandArray)+'.'+self.id
+            else:
+                return self.parent.getPath(includeRoot,expandArray)+'.'+self.id
         else:
             return self.id
 
@@ -99,7 +120,7 @@ class node(object):
     
     ### returns the array index if id in the format "name_index" and has "type=array" in fw info, otherwise -1
     ### example: <node id="CM_1" fwinfo="type=array">
-    def extract_index(self):
+    def extractIndex(self):
         if not 'type' in self.fwinfo.keys():
             return -1
         if not "array" in self.fwinfo['type']:
@@ -150,13 +171,21 @@ class node(object):
         else:
             return str(start).rjust(2,' ') +" downto "+str(end).rjust(2,' ')
 
+    # for debugging purposes
+    def dump(self, padding=''):
+        print(padding+"id="+self.id+" address="+str(self.address)+" mask="+str(self.mask)+" permission="+self.permission)
+        for child in self.children:
+            child.dump(padding+'\t')
+
 
 class array_node(node):
     ##### initialized with the first entry
     def __init__(self, first_entry):
-        first_index = first_entry.extract_index()
+        first_index = first_entry.extractIndex()
         assert first_index >= 0
-        self.id = first_entry.id[:first_entry.id.rfind('_')] + '_ARRAY'
+        self.id = first_entry.id[:first_entry.id.rfind('_')] 
+        first_entry.id = first_entry.id[:first_entry.id.rfind('_')]+'('+str(first_index)+')'
+        first_entry.array_head = self
         self.description = "Array of " + self.id
         self.address = first_entry.address
         self.mask = 0xffffffff
@@ -166,31 +195,30 @@ class array_node(node):
         self.tree = first_entry.tree
         self.children = first_entry.children
         self.entries = {first_index : first_entry}
-        ##### link children to this array_node:
-        for child in self.children:
-            child.parent = self
 
-    ### re-implemented from node
-    ### in array-type case, return the address of the entry with maximum address
-    def getLocalAddress(self):
-        if self.parent:
-            return max([i.address for i in self.entries.values()]) + self.parent.getLocalAddress()
-        else:
-            return 0
-    
     def isCompatible(self, new_entry):
-        new_index = new_entry.extract_index()
-        ##### TODO: probably should throw an excetion if attempting to add noncompatible array with compatible id?
-        if (new_index < 0) or (new_index in self.entries.keys()): return False
         if not self.id[:new_entry.id.rfind('_')] == new_entry.id[:new_entry.id.rfind('_')]: return False
-        if not self.isIdentical(new_entry): return False 
+        new_index = new_entry.extractIndex()
+        if (new_index < 0) or (new_index in self.entries.keys()): 
+            self.tree.log.critical("Critical: Attempting to register multiple array type registers but they are not identical!")
+            if not self.tree.debug:
+                sys.exit(EXIT_CODE_NODE_INVALID_ARRAY)
+            return False
+        if not self.isIdentical(new_entry): 
+            self.tree.log.critical("Critical: Attempting to register multiple array type registers but they are not identical!")
+            if not self.tree.debug:
+                sys.exit(EXIT_CODE_NODE_INVALID_ARRAY)
+            return False
         return True
 
     ### If new entry is compatible, add it to the array and return True, otherwise return False
     def checkAppend(self, new_entry):
         if self.isCompatible(new_entry):
-            new_index = new_entry.extract_index()
+            new_index = new_entry.extractIndex()
+            ##### turn entry's id from XXX_1 into XXX(1)
+            new_entry.id = ('('+str(new_index)+')').join( new_entry.id.rsplit('_'+str(new_index),1) )
             self.entries[new_index] = new_entry
+            self.entries[new_index].array_head = self
             return True
         return False
 
@@ -202,3 +230,8 @@ class array_node(node):
     def isArray(self):
         return True
 
+    # for debugging purposes
+    def dump(self, padding=''):
+        print(padding+"id="+self.id+" address="+str(self.address)+" mask="+str(self.mask)+" permission="+self.permission+" array_indices="+str(self.entries.keys()))
+        for child in self.children:
+            child.dump(padding+'\t')

@@ -3,12 +3,13 @@ from jinja2 import Template
 
 
 class tree(object):
-    def __init__(self, root, logger=None):
+    def __init__(self, root, logger=None, debug=False):
         self.read_ops = dict(list())
         self.readwrite_ops = str()
         self.write_ops = dict(list())
         self.action_ops = str()
         self.default_ops = str()
+        self.debug=debug
         ##### setup logger
         self.log = logger
         if not self.log:
@@ -25,7 +26,7 @@ class tree(object):
     def generateRecord(self, baseName, current_node, members, description):
         with open(self.outFileName,'a') as outFile:
             ##### Generate and print a VHDL record
-            outFile.write("  type " + baseName.replace('_ARRAY','') + " is record\n")
+            outFile.write("  type " +baseName+ " is record\n")
             maxNameLength = 25
             maxTypeLength = 12
             sorted_members = sorted(members.items(), key=lambda item: (current_node.getChild(item[0]).address<<32) + current_node.getChild(item[0]).mask)
@@ -39,10 +40,10 @@ class tree(object):
                 if len(description[memberName]) > 0:
                     outFile.write("  -- " + description[memberName])
                 outFile.write('\n')
-            outFile.write("  end record " + baseName.replace('_ARRAY','') + ";\n")
+            outFile.write("  end record " +baseName+ ";\n")
             if current_node.isArray():
                 array_index_string = " is array(" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+") of "
-                outFile.write("  type " + baseName + array_index_string + baseName.replace('_ARRAY','') + ";")
+                outFile.write("  type " + baseName + "_ARRAY" + array_index_string + baseName + ";")
             outFile.write("\n\n")
             outFile.close()
         ##### TODO: return value here?
@@ -70,11 +71,10 @@ class tree(object):
             outfile.close()
         return "DEFAULT_"+baseName
 
-    ### Traverse through the tree and generate records in the PKG vhdl
-    ### note the padding is not implemented yet
-    def traverse(self, current_node=None, padding='\t'):
+    def traversePkg(self, current_node=None, padding='\t'):
         if not current_node:
             current_node = self.root
+        print(padding+current_node.id+': ['+str([i.id for i in current_node.children]))
         package_mon_entries = dict()
         package_ctrl_entries = dict()
         package_ctrl_entry_defaults = dict()
@@ -82,19 +82,23 @@ class tree(object):
         package_addr_order = dict()
         for child in current_node.children:
             if len(child.children) != 0:
-                child_records = self.traverse(child, padding+'\t')
+                child_records = self.traversePkg(child, padding+'\t')
                 package_description[child.id] = ""
+                array_postfix = ["","_ARRAY"][child.isArray()]
+                ##### make the records for package entries
                 if child_records.has_key('mon'):
-                    package_mon_entries[child.id] = child.getPath().replace('.','_')+'_MON_t'
+                    package_mon_entries[child.id] = child.getPath(expandArray=False).replace('.','_')+'_MON_t'+array_postfix
                 if child_records.has_key('ctrl'):
-                    package_ctrl_entries[child.id] = child.getPath().replace('.','_') + '_CTRL_t'
+                    package_ctrl_entries[child.id] = child.getPath(expandArray=False).replace('.','_') + '_CTRL_t'+array_postfix
                 if child_records.has_key('ctrl_default'):
-                    package_ctrl_entry_defaults[child.id] = "DEFAULT_"+child.getPath().replace('.','_')+"_CTRL_t"
+                    default_package_entries = "DEFAULT_"+child.getPath(expandArray=False).replace('.','_')+"_CTRL_t"
+                    if child.isArray(): default_package_entries = "(others => "+default_package_entries+" )"
+                    package_ctrl_entry_defaults[child.id] = default_package_entries
             else:
                 bitCount = bin(child.mask)[2:].count('1')
                 package_entries = ""
-                if child.isArray():
-                    package_entries = "array("+str(min(child.entries.keys())) + ' to ' + str(max(child.entries.keys())) + ') of '
+                #if child.isArray():
+                #    package_entries = "array("+str(min(child.entries.keys())) + ' to ' + str(max(child.entries.keys())) + ') of '
                 if bitCount == 1:
                     package_entries += "std_logic"
                 else:
@@ -104,10 +108,6 @@ class tree(object):
                 bits = child.getBitRange()
                 if child.permission == 'r':
                     package_mon_entries[child.id] = package_entries
-                    if self.read_ops.has_key(child.getLocalAddress()):
-                        self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress()] + str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False)+"; --"+child.description+"\n"
-                    else:
-                        self.read_ops[child.getLocalAddress()] =                           str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False)+"; --"+child.description+"\n"
                 elif child.permission == 'rw':
                     package_ctrl_entries[child.id] = package_entries
                     ##### store data for default signal
@@ -117,16 +117,6 @@ class tree(object):
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
                     else:
                         package_ctrl_entry_defaults[child.id] = "'0'"
-                    if self.read_ops.has_key(child.getLocalAddress()):
-                        self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress()] + str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+"); --"+child.description+"\n"
-                    else:
-                        self.read_ops[child.getLocalAddress()] =                           str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+"); --"+child.description+"\n"
-                    if self.write_ops.has_key(child.getLocalAddress()):
-                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + str("reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
-                    else:
-                        self.write_ops[child.getLocalAddress()] =                            str("reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
-                    self.readwrite_ops+=("Ctrl."+child.getPath(includeRoot=False)) + " <= reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+");\n"
-                    self.default_ops+="reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+") <= "+("CTRL_t."+child.getPath(includeRoot=False))+";\n"
                 elif child.permission == 'w':
                     ##### store data for default signal
                     if child.parameters.has_key("default"):
@@ -136,22 +126,14 @@ class tree(object):
                     else:
                         package_ctrl_entry_defaults[child.id] = "'0'"
                     package_ctrl_entries[child.id] = package_entries
-                    if self.write_ops.has_key(child.getLocalAddress()):
-                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
-                    else:                                                     
-                        self.write_ops[child.getLocalAddress()] =                            ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
-                    #determin if this is a vector or a single entry
-                    if bits.find("downto") > 0:
-                        self.action_ops+="Ctrl." + child.getPath(includeRoot=False) + " <= (others => '0');\n"
-                    else:
-                        self.action_ops+="Ctrl." + child.getPath(includeRoot=False) + " <= '0';\n"
-
         ret = {}
         if package_mon_entries:
-            baseName = current_node.getPath().replace('.','_')+'_MON_t'
+            baseName = current_node.getPath(expandArray=False).replace('.','_')+'_MON_t'
+            print(padding+baseName)
             ret['mon'] = self.generateRecord(baseName, current_node, package_mon_entries, package_description)
         if package_ctrl_entries:
-            baseName = current_node.getPath().replace('.','_')+'_CTRL_t'
+            baseName = current_node.getPath(expandArray=False).replace('.','_')+'_CTRL_t'
+            print(padding+baseName)
             ret['ctrl'] = self.generateRecord(baseName, current_node, package_ctrl_entries, package_description)
             ret["ctrl_default"] = self.generateDefaultRecord(baseName, package_ctrl_entry_defaults)
         return ret
@@ -172,11 +154,12 @@ class tree(object):
             outFile.write("use IEEE.std_logic_1164.all;\n")
             outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
             outFile.close()
-        self.traverse()
+        self.traversePkg()
         with open(self.outFileName, 'a') as outFile:
             outFile.write("\n\nend package "+outFileBase+"_CTRL;")
             outFile.close()
         return
+
 
     @staticmethod
     def sortByBit(line):
@@ -271,14 +254,57 @@ class tree(object):
                 output.write("\n")
         return output.getvalue()
 
-    ### This should only be called after generatePkg is called
+    def traverseRegMap(self, current_node=None, padding='\t'):
+        if not current_node:
+            current_node = self.root
+        ##### expand the array entries
+        expanded_child_list = []
+        for child in current_node.children:
+            if child.isArray():
+                for entry in child.entries.values():
+                    expanded_child_list.append(entry)
+            else:
+                expanded_child_list.append(child)
+        ##### loop over expanded list
+        for child in expanded_child_list:
+            if len(child.children) != 0:
+                self.traverseRegMap(child, padding+'\t')
+            else:
+                bits = child.getBitRange()
+                if child.permission == 'r':
+                    if self.read_ops.has_key(child.getLocalAddress()):
+                        self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress()] + str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False,expandArray=True)+"; --"+child.description+"\n"
+                    else:
+                        self.read_ops[child.getLocalAddress()] = str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False,expandArray=True)+"; --"+child.description+"\n"
+                elif child.permission == 'rw':
+                    if self.read_ops.has_key(child.getLocalAddress()):
+                        self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress()] + str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+"); --"+child.description+"\n"
+                    else:
+                        self.read_ops[child.getLocalAddress()] = str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+"); --"+child.description+"\n"
+                    if self.write_ops.has_key(child.getLocalAddress()):
+                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + str("reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
+                    else:
+                        self.write_ops[child.getLocalAddress()] = str("reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
+                    self.readwrite_ops+=("Ctrl."+child.getPath(includeRoot=False,expandArray=True)) + " <= reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+");\n"
+                    self.default_ops+="reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+") <= "+("CTRL_t."+child.getPath(includeRoot=False,expandArray=True))+";\n"
+                elif child.permission == 'w':
+                    if self.write_ops.has_key(child.getLocalAddress()):
+                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
+                    else:                                                     
+                        self.write_ops[child.getLocalAddress()] = ("Ctrl."+child.getPath(includeRoot=False,expandArray=True)) + " <= localWrData("+bits+");\n"
+                    #determin if this is a vector or a single entry
+                    if bits.find("downto") > 0:
+                        self.action_ops+="Ctrl." + child.getPath(includeRoot=False,expandArray=True) + " <= (others => '0');\n"
+                    else:
+                        self.action_ops+="Ctrl." + child.getPath(includeRoot=False,expandArray=True) + " <= '0';\n"
+        return
+
     def generateRegMap(self, outFileName=None, regMapTemplate="template_map.vhd"):
-        if (not self.read_ops) and (not self.write_ops):
-            self.log.critical("generateRegMap must be called after generatePkg!")
-            return
         outFileBase = self.root.id
         if not outFileName:
             outFileName = outFileBase+"_map.vhd"
+        ##### traverse through the tree and fill the ops
+        self.traverseRegMap()
         ##### calculate regMapSize and regAddrRange
         regMapSize=0
         if len(self.read_ops) and max(self.read_ops,key=int) > regMapSize:
