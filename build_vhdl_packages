@@ -169,7 +169,10 @@ def traverseTree(Node,padding,baseAddress,baseName,outFileName):
                     if childNode.getParameters().get("default") != None:
                         intValue=int(childNode.getParameters()["default"],0)
                         if bits.find("downto") > 0:
-                            package_ctrl_entry_defaults[name] = "x\"" + hex(intValue)[2:] + "\""
+                            if bitCount % 4 == 0:
+                                package_ctrl_entry_defaults[name] = "x\"" + hex(intValue)[2:].zfill(bitCount/4) + "\""
+                            else:
+                                package_ctrl_entry_defaults[name] = "\"" + bin(intValue)[2:].zfill(bitCount) + "\""
                         else:
                             package_ctrl_entry_defaults[name] = "'"+str(intValue)+"'"
                     else:
