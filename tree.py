@@ -112,7 +112,11 @@ class tree(object):
                     package_ctrl_entries[child.id] = package_entries
                     ##### store data for default signal
                     if child.parameters.has_key("default"):
-                        package_ctrl_entry_defaults[child.id] = child.parameters["default"]
+                        intValue = int(child.parameters["default"],0)
+                        if bits.find("downto") > 0:
+                            package_ctrl_entry_defaults[child.id] = "x\"" + hex(intValue)[2:] + "\""
+                        else:
+                            package_ctrl_entry_defaults[child.id] = "'"+str(intValue)+"'"
                     elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
                     else:
@@ -120,7 +124,7 @@ class tree(object):
                 elif child.permission == 'w':
                     ##### store data for default signal
                     if child.parameters.has_key("default"):
-                        package_ctrl_entry_defaults[child.id] = child.parameters["default"]
+                        print("Action register with default value!\n")
                     elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
                     else:
@@ -154,7 +158,7 @@ class tree(object):
             outFile.write("use IEEE.std_logic_1164.all;\n")
             outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
             outFile.close()
-        self.traversePkg()
+        records = self.traversePkg()
         with open(self.outFileName, 'a') as outFile:
             outFile.write("\n\nend package "+outFileBase+"_CTRL;")
             outFile.close()
