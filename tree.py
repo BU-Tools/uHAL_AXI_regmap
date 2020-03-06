@@ -114,7 +114,10 @@ class tree(object):
                     if child.parameters.has_key("default"):
                         intValue = int(child.parameters["default"],0)
                         if bits.find("downto") > 0:
-                            package_ctrl_entry_defaults[child.id] = "x\"" + hex(intValue)[2:] + "\""
+                            if bitCount % 4 == 0:
+                                package_ctrl_entry_defaults[child.id] = "x\"" + hex(intValue)[2:].zfill(bitCount/4) + "\""
+                            else:
+                                package_ctrl_entry_defaults[child.id] = "\"" + bin(intValue)[2:].zfill(bitCount) + "\""
                         else:
                             package_ctrl_entry_defaults[child.id] = "'"+str(intValue)+"'"
                     elif bits.find("downto") > 0:
