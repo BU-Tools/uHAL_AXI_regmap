@@ -74,7 +74,7 @@ class tree(object):
     def traversePkg(self, current_node=None, padding='\t'):
         if not current_node:
             current_node = self.root
-        print(padding+current_node.id+': ['+str([i.id for i in current_node.children]))
+        #print(padding+current_node.id+': ['+str([i.id for i in current_node.children]))
         package_mon_entries = dict()
         package_ctrl_entries = dict()
         package_ctrl_entry_defaults = dict()
@@ -136,11 +136,11 @@ class tree(object):
         ret = {}
         if package_mon_entries:
             baseName = current_node.getPath(expandArray=False).replace('.','_')+'_MON_t'
-            print(padding+baseName)
+            #print(padding+baseName)
             ret['mon'] = self.generateRecord(baseName, current_node, package_mon_entries, package_description)
         if package_ctrl_entries:
             baseName = current_node.getPath(expandArray=False).replace('.','_')+'_CTRL_t'
-            print(padding+baseName)
+            #print(padding+baseName)
             ret['ctrl'] = self.generateRecord(baseName, current_node, package_ctrl_entries, package_description)
             ret["ctrl_default"] = self.generateDefaultRecord(baseName, package_ctrl_entry_defaults)
         return ret
