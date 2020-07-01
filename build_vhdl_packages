@@ -30,7 +30,7 @@ import math
 import uhal
 from tree import * # import node,arraynode,tree
 
-import StringIO
+import io
 
 #===========================================================================================
 # In Python 3 "xrange" doesn't exist, since Python 3's "range" is just as efficient as Python 2's "xrange"

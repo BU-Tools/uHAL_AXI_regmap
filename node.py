@@ -8,7 +8,7 @@ import logging
 import math
 import uhal
 
-import StringIO
+import io
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
 EXIT_CODE_ARG_PARSING_ERROR   = 2
 EXIT_CODE_NODE_ADDRESS_ERRORS = 3
