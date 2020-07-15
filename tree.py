@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from node import *
 from jinja2 import Template
 
@@ -102,7 +103,7 @@ class tree(object):
                 if bitCount == 1:
                     package_entries += "std_logic"
                 else:
-                    package_entries += "std_logic_vector(" + str(bitCount-1).rjust(2,' ') + " downto 0)"
+                    package_entries += "std_logic_vector(" + str(bitCount-1).rjust(2,str(' ')) + " downto 0)"
                 
                 package_description[child.id] = child.description
                 bits = child.getBitRange()
