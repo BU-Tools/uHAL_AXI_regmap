@@ -3,63 +3,25 @@ import argparse
 import os
 import copy
 
+from node import Node
+
 
 addressMap = dict()
 
 
-class Node:
-    def __init__(self, name, depth=0, address=0, relativeAddress=0):
-        self.parent = None
-        self.children = []
-        self.attrib = dict()
-
-        self.name = name
-        self.depth = depth
-        self.address = address
-        self.relativeAddress = relativeAddress
-        self.filePath = ""
-
-
-def printTree(node):
-    stack = [node]
-    while (len(stack) > 0):
-        current = stack.pop(0)
-        for x in range(current.depth):
-            print("\t", end="")
-        print(current.name)
-        for child in current.children:
-            stack.insert(0, child)
-
-
-def writeTree(node):
+def writeMap(m, path="tempDupError.txt"):
     """
-    write tree to log.txt
+    helper function to log a map to a text file
     """
+    f = open(path, "w")
 
-    f = open("log.txt", "w")
-    stack = [node]
-    while (len(stack) > 0):
-        current = stack.pop(0)
-        for x in range(current.depth):
-            f.write("|\t")
-        f.write('|-->')
-        f.write("id: " + current.name)
-        f.write(" address: " + hex(current.address))
-        f.write(" relative address: " + hex(current.relativeAddress))
-        f.write('\n')
-        block = []
-        for child in current.children:
-            block.append(child)
-        stack = block + stack
-
-
-def writeMap(m):
-    f = open("dupError.txt", "w")
-    for key in m.keys():
-        f.write(hex(key) + '\n')
-        for item in m[key]:
-            f.write('\t')
-            f.write("{: <50} {: <100}\n".format(item.name, item.filePath))
+    for addr in m.keys():
+        for mask in m[addr].keys():
+            f.write(hex(addr) + " " + hex(mask) + '\n')
+            for item in m[addr][mask]:
+                f.write('\t')
+                f.write("{: <50} {: <100}\n".format(
+                    item.getName(), item.getFilePath()))
 
 
 def buildTree(parentNode, filepath, currentElement=None):
@@ -84,27 +46,26 @@ def buildTree(parentNode, filepath, currentElement=None):
 
     while (len(queue) > 0):
         current = queue.pop(0)
-        currentAttr = current.attrib
+        currAttr = current.attrib
 
-        childNode = Node(currentAttr['id'], parentNode.depth+1)
-        parentNode.children.append(childNode)
-        childNode.parent = parentNode
-        childNode.filePath = filepath
-        childNode.attrib = copy.deepcopy(currentAttr)
-        childNode.attrib.pop('id', None)
+        # create childNode from
+        # print(currAttr)
+        childNode = Node(name=currAttr.get("id"), parentNode=parentNode, address=currAttr.get("address"),
+                         mask=currAttr.get("mask"), base=16, description=currAttr.get("description"), path=filepath)
+        childNode.setParameters(currAttr.get("parameters"))
+        childNode.setFwinfo(currAttr.get("fwinfo"))
+        childNode.setAttrib(currAttr)
+        # add childNode to parent
+        parentNode.addChild(childNode)
 
-        if "address" in currentAttr:
-            addr = int(currentAttr["address"], 16)
-            childNode.address = parentNode.address + addr
-            childNode.relativeAddress = addr
-            childNode.attrib.pop('address', None)
-        else:
-            childNode.address = parentNode.address
+        #
+        addressMap.setdefault(childNode.getAddress(), {})
+        addressMap[childNode.getAddress()].setdefault(childNode.getMask(), [])
+        addressMap[childNode.getAddress()][childNode.getMask()
+                                           ].append(childNode)
 
-        addressMap.setdefault(childNode.address, []).append(childNode)
-
-        if "module" in currentAttr:
-            modulePath = currentAttr["module"].replace("file://", "")
+        if "module" in currAttr:
+            modulePath = currAttr["module"].replace("file://", "")
             nextPath = os.path.join(os.path.dirname(
                 filepath), modulePath)
             # generate rest of tree from reference path
@@ -114,40 +75,51 @@ def buildTree(parentNode, filepath, currentElement=None):
             buildTree(childNode, filepath, current)
 
 
-def dupAddress():
+def dupAddress(permission='w'):
+    """
+    find all node that have the same address, mask and perimission 
+    so default is 'w' which checks for error
+    pass in 'r' which checks for warning
+    """
     dupMap = dict()
-    for key in addressMap.keys():
-        write = 0
-        writeNodes = []
-        for item in addressMap[key]:
-            perm = item.attrib.get('permission', None)
-            if perm is not None and 'w' in perm:
-                writeNodes.append(item)
-        if len(writeNodes) > 1:
-            dupMap[key] = writeNodes
+
+    for addr in addressMap.keys():
+        for mask in addressMap[addr].keys():
+            if mask == -1:
+                continue
+
+            writeNodes = []
+            for item in addressMap[addr][mask]:
+                perm = item.getAttrib().get('permission', None)
+                if perm is not None and permission in perm:
+                    writeNodes.append(item)
+
+            if len(writeNodes) > 1:
+                dupMap.setdefault(addr, {})
+                dupMap[addr].setdefault(mask, [])
+                dupMap[addr][mask] = writeNodes
+
     return dupMap
 
 
 def main(inFile):
-    root = Node('Root')
-    inFile = os.path.join(dirName, inFile)
+    root = Node(name='Root')
     buildTree(root, inFile)
 
-    writeTree(root)
+    Node.writeNode(root, path="temp.txt")
+    # writeTree(root)
     dupMap = dupAddress()
-    writeMap(dupMap)
+    warningMap = dupAddress(permission='r')
+    writeMap(dupMap, path="error.txt")
+    writeMap(warningMap, path="warning.txt")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument(
-        "-ifs", help='address_appolo.xml')
-    parser.add_argument(
-        "-dir", help='address table directory path')
+        "-ifs", help='addressTable/address_appolo.xml')
 
     inFile = parser.parse_args().ifs
-    global dirName
-    dirName = parser.parse_args().dir
 
     # if inFile is None or not path.exists(inFile):
     #     print('invalid input filename')
@@ -156,9 +128,3 @@ if __name__ == "__main__":
     #     main(inFile)
 
     main(inFile)
-
-
-"""
-keep track of all attributes in the node
-
-"""
