@@ -1,5 +1,9 @@
 from node import *
 from jinja2 import Template
+try:
+    from StringIO import StringIO  # for Python 2
+except ImportError:
+    from io import StringIO  # for Python 3
 
 
 class tree(object):
@@ -204,7 +208,7 @@ class tree(object):
 
     @staticmethod
     def generateAlignedCase(operations):
-        output = StringIO.StringIO()
+        output = StringIO()
         newAssignmentPos = 0
         newAssignmentLength = 0
         for addr in operations:
@@ -241,7 +245,7 @@ class tree(object):
         return self.generateAlignedCase(self.write_ops)
 
     def generate_rw_ops_output(self):
-        output = StringIO.StringIO()
+        output = StringIO()
         newAssignmentPos = 0
         newAssignmentLength = 0
         for line in self.readwrite_ops.split("\n"):
@@ -267,13 +271,13 @@ class tree(object):
         return output.getvalue()
 
     def generate_a_ops_output(self):
-        output = StringIO.StringIO()
+        output = StringIO()
         for line in self.action_ops.split("\n"):
             output.write("      "+line+"\n")
         return output.getvalue()
 
     def generate_def_ops_output(self):
-        output = StringIO.StringIO()
+        output = StringIO()
         for line in self.default_ops.split("\n"):
             if(len(line)):
                 output.write("      "+line.split("<")[0])
