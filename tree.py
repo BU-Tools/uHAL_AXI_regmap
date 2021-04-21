@@ -92,13 +92,13 @@ class tree(object):
                 package_description[child.id] = ""
                 array_postfix = ["", "_ARRAY"][child.isArray()]
                 # make the records for package entries
-                if child_records.has_key('mon'):
+                if 'mon' in child_records:
                     package_mon_entries[child.id] = child.getPath(
                         expandArray=False).replace('.', '_')+'_MON_t'+array_postfix
-                if child_records.has_key('ctrl'):
+                if 'ctrl' in child_records:
                     package_ctrl_entries[child.id] = child.getPath(
                         expandArray=False).replace('.', '_') + '_CTRL_t'+array_postfix
-                if child_records.has_key('ctrl_default'):
+                if 'ctrl_default' in child_records:
                     default_package_entries = "DEFAULT_" + \
                         child.getPath(expandArray=False).replace(
                             '.', '_')+"_CTRL_t"
@@ -124,12 +124,12 @@ class tree(object):
                 elif child.permission == 'rw':
                     package_ctrl_entries[child.id] = package_entries
                     # store data for default signal
-                    if child.parameters.has_key("default"):
+                    if "default" in child.parameters:
                         intValue = int(child.parameters["default"], 0)
                         if bits.find("downto") > 0:
                             if bitCount % 4 == 0:
                                 package_ctrl_entry_defaults[child.id] = "x\"" + hex(
-                                    intValue)[2:].zfill(bitCount/4) + "\""
+                                    intValue)[2:].zfill(int(bitCount/4)) + "\""
                             else:
                                 package_ctrl_entry_defaults[child.id] = "\"" + bin(
                                     intValue)[2:].zfill(bitCount) + "\""
@@ -142,7 +142,7 @@ class tree(object):
                         package_ctrl_entry_defaults[child.id] = "'0'"
                 elif child.permission == 'w':
                     # store data for default signal
-                    if child.parameters.has_key("default"):
+                    if "default" in child.parameters:
                         print("Action register with default value!\n")
                     elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
@@ -300,20 +300,20 @@ class tree(object):
             else:
                 bits = child.getBitRange()
                 if child.permission == 'r':
-                    if self.read_ops.has_key(child.getLocalAddress()):
+                    if child.getLocalAddress() in self.read_ops:
                         self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress(
                         )] + str("localRdData("+bits+")")+" <= Mon."+child.getPath(includeRoot=False, expandArray=True)+"; --"+child.description+"\n"
                     else:
                         self.read_ops[child.getLocalAddress()] = str("localRdData("+bits+")")+" <= Mon."+child.getPath(
                             includeRoot=False, expandArray=True)+"; --"+child.description+"\n"
                 elif child.permission == 'rw':
-                    if self.read_ops.has_key(child.getLocalAddress()):
+                    if child.getLocalAddress() in self.read_ops:
                         self.read_ops[child.getLocalAddress()] = self.read_ops[child.getLocalAddress(
                         )] + str("localRdData("+bits+")")+" <= "+"reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+"); --"+child.description+"\n"
                     else:
                         self.read_ops[child.getLocalAddress()] = str("localRdData("+bits+")")+" <= "+"reg_data("+str(
                             child.getLocalAddress()).rjust(2)+")("+bits+"); --"+child.description+"\n"
-                    if self.write_ops.has_key(child.getLocalAddress()):
+                    if child.getLocalAddress() in self.write_ops:
                         self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + str("reg_data("+str(
                             child.getLocalAddress()).rjust(2)+")("+bits+")") + " <= localWrData("+bits+"); --"+child.description+"\n"
                     else:
@@ -325,7 +325,7 @@ class tree(object):
                     self.default_ops += "reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+") <= "+(
                         "CTRL_t."+child.getPath(includeRoot=False, expandArray=True))+";\n"
                 elif child.permission == 'w':
-                    if self.write_ops.has_key(child.getLocalAddress()):
+                    if child.getLocalAddress() in self.write_ops:
                         self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress(
                         )] + ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
                     else:
