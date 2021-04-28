@@ -166,18 +166,18 @@ def main(inFile):
 
     print("done")
 
-    # same address and same mask that have permission write
-    dupMap = dupAddress()
-    writeMap(dupMap, path="debug/error.txt")
-    # same address and same mask that have permission read
-    warningMap = dupAddress(permission='r')
-    writeMap(warningMap, path="debug/warning.txt")
-    # masks that have 0 inbetween 1
-    invalidMap = invalidAddress()
-    writeMap(invalidMap, path="debug/invalid.txt")
-    # same address that have mask overlaps in binary
-    overlapMap = overlapAddress()
-    writeMap(overlapMap, path="debug/overlap.txt")
+    # # same address and same mask that have permission write
+    # dupMap = dupAddress()
+    # writeMap(dupMap, path="debug/error.txt")
+    # # same address and same mask that have permission read
+    # warningMap = dupAddress(permission='r')
+    # writeMap(warningMap, path="debug/warning.txt")
+    # # masks that have 0 inbetween 1
+    # invalidMap = invalidAddress()
+    # writeMap(invalidMap, path="debug/invalid.txt")
+    # # same address that have mask overlaps in binary
+    # overlapMap = overlapAddress()
+    # writeMap(overlapMap, path="debug/overlap.txt")
 
 
 if __name__ == "__main__":

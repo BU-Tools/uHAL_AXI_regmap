@@ -16,15 +16,15 @@ class tree(object):
         self.debug = debug
         # setup logger
         self.log = logger
-        if not self.log:
-            self.log = logging.getLogger("main")
-            formatter = logging.Formatter(
-                '%(name)s %(levelname)s: %(message)s')
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setFormatter(formatter)
-            self.log.addHandler(handler)
-            self.log.setLevel(logging.WARNING)
-            uhal.setLogLevelTo(uhal.LogLevel.WARNING)
+        # if not self.log:
+        #     self.log = logging.getLogger("main")
+        #     formatter = logging.Formatter(
+        #         '%(name)s %(levelname)s: %(message)s')
+        #     handler = logging.StreamHandler(sys.stdout)
+        #     handler.setFormatter(formatter)
+        #     self.log.addHandler(handler)
+        #     self.log.setLevel(logging.WARNING)
+        #     uhal.setLogLevelTo(uhal.LogLevel.WARNING)
         # read the root node
         self.root = node(root, baseAddress=0, tree=self)
 
@@ -179,6 +179,7 @@ class tree(object):
         self.outFileName = outFileName
         if not self.outFileName:
             self.outFileName = outFileBase + "_PKG.vhd"
+            # self.outFileName = "pkg/" + outFileBase + "_PKG.vhd"
         with open(self.outFileName, 'w') as outFile:
             outFile.write("--This file was auto-generated.\n")
             outFile.write("--Modifications might be lost.\n")
@@ -350,6 +351,7 @@ class tree(object):
         outFileBase = self.root.id
         if not outFileName:
             outFileName = outFileBase+"_map.vhd"
+            # outFileName = "map/" + outFileBase+"_map.vhd"
         # traverse through the tree and fill the ops
         self.traverseRegMap()
         # calculate regMapSize and regAddrRange
