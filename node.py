@@ -48,7 +48,7 @@ class node(object):
                 sys.exit(EXIT_CODE_NODE_INVALID_ARRAY)
         # sort children by address and mask
         self.children = sorted(
-            self.children, key=lambda child: child.address << 32 + child.mask)
+            self.children, key=lambda child: (child.address << 32) + child.mask)
 
     ### re-implemented in array_node
     def getLocalAddress(self):
