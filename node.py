@@ -6,8 +6,8 @@ import os.path
 import time
 import logging
 import math
-import uhal
-import parserNode
+# import uhal
+from parserNode import ParserNode
 try:
     from StringIO import StringIO  # for Python 2
 except ImportError:
@@ -21,7 +21,7 @@ EXIT_CODE_NODE_INVALID_ARRAY = 4
 
 class node(object):
     def __init__(self, uhalNode, baseAddress, tree=None, parent=None, index=None):
-        if isinstance(uhalNode, parserNode):
+        if isinstance(uhalNode, ParserNode):
             # parser node constructor
             self.parent = parent
             self.tree = tree

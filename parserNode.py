@@ -40,7 +40,7 @@ class ParserNode:
         return names
 
     def getNode(self, s):
-        return getChild(childName)
+        return self.getChild(s)
 
     def getName(self):
         return self.__name

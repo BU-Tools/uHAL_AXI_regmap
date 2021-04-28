@@ -154,9 +154,7 @@ def overlapAddress():
 def main(inFile):
     root = ParserNode(name='Root')
     buildTree(root, inFile)
-
     ParserNode.writeNode(root, path="temp.txt")
-    writeTree(root)
 
     for child in root.getChildren():
         child.setParent(None)
@@ -184,12 +182,12 @@ def main(inFile):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Custom parser that acts like uhal parser')
+        description='Custom parser similar to uhal parser')
     parser.add_argument(
         "-ifs", help='addressTable/address_apollo.xml')
     inFile = parser.parse_args().ifs
 
-    if inFile is None or not path.exists(inFile):
+    if inFile is None or not os.path.exists(inFile):
         print('invalid input filename')
         exit
 
