@@ -8,8 +8,11 @@ import logging
 import math
 import uhal
 import parserNode
+try:
+    from StringIO import StringIO  # for Python 2
+except ImportError:
+    from io import StringIO  # for Python 3
 
-import StringIO
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
 EXIT_CODE_ARG_PARSING_ERROR = 2
 EXIT_CODE_NODE_ADDRESS_ERRORS = 3
