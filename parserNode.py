@@ -1,7 +1,7 @@
-class Node:
+class ParserNode:
     addressMap = dict()
 
-    def __init__(self, name=None, parentNode=None, address=None, mask=None, base=10, description=None, path=""):
+    def __init__(self, name=None, parentNode=None, address=None, mask=None, base=10, description=None, permission=None, path=""):
         self.setParent(parentNode)
         self.__children = []
 
@@ -10,6 +10,7 @@ class Node:
         self.setRelativeAddress(address, base)
         self.setMask(mask, base)
         self.setDescription(description)
+        self.setPermission(permission)
 
         self.__parameters = dict()
         self.__fwinfo = dict()
@@ -25,6 +26,12 @@ class Node:
 
     def getChildren(self):
         return self.__children
+
+    def getChild(self, childName):
+        for child in self.__children:
+            if child.getName() == childName:
+                return child
+        return None
 
     def getName(self):
         return self.__name
@@ -46,15 +53,23 @@ class Node:
 
     def getMask(self, base=10):
         if base == 16:
-            if self.__mask == -1:
+            if self.__mask == 0:
                 return "NONE"
             else:
                 return hex(self.__mask)
+        elif base == 2:
+            if self.__mask == 0:
+                return "NONE"
+            else:
+                return bin(self.__mask)
         else:
             return self.__mask
 
     def getDescription(self):
         return self.__description
+
+    def getPermission(self):
+        return self.__permission
 
     def getParameters(self):
         return self.__parameters
@@ -68,18 +83,45 @@ class Node:
     def getFilePath(self):
         return self.__filePath
 
+    def getPath(self, expandArray=False):
+        if self.__parent:
+            return self.__parent.getPath(expandArray)+'.'+self.__name
+        else:
+            return self.__name
+
+    def getBitRange(self, mask=None):
+        if not mask:
+            mask = self.__mask
+        bits = bin(mask)[2:].zfill(32)[::-1]
+        start = -1
+        end = -1
+        for i in range(len(bits)-1, -1, -1):
+            if start == -1:
+                if bits[i] == '1':
+                    start = i
+            elif end == -1:
+                if bits[i] == '0':
+                    end = i+1
+                    break
+        if end == -1:
+            end = 0
+        if start == end:
+            return str(start).rjust(2)
+        else:
+            return str(start).rjust(2, ' ') + " downto "+str(end).rjust(2, ' ')
+
     #--------------- modifiers ---------------#
 
     def setParent(self, parentNode):
         if parentNode is None:
             self.__parent = None
-        elif isinstance(parentNode, Node):
+        elif isinstance(parentNode, ParserNode):
             self.__parent = parentNode
         else:
             self.__parent = None
 
     def addChild(self, childNode):
-        if isinstance(childNode, Node):
+        if isinstance(childNode, ParserNode):
             self.__children.append(childNode)
 
     def setName(self, name):
@@ -100,8 +142,7 @@ class Node:
     def setAddress(self, addr, base=10):
         if addr is None:
             addr = 0
-
-        if base == 16:
+        elif base == 16:
             addr = int(str(addr), 16)
         else:
             addr = int(str(addr))
@@ -114,8 +155,7 @@ class Node:
     def setRelativeAddress(self, addr, base=10):
         if addr is None:
             addr = 0
-
-        if base == 16:
+        elif base == 16:
             addr = int(str(addr), 16)
         else:
             addr = int(str(addr))
@@ -124,9 +164,9 @@ class Node:
 
     def setMask(self, mask, base=10):
         if mask is None:
-            mask = -1
+            mask = 4294967295
 
-        if base == 16:
+        elif base == 16:
             mask = int(str(mask), 16)
         else:
             mask = int(str(mask))
@@ -139,13 +179,20 @@ class Node:
 
         self.__description = description
 
+    def setPermission(self, permission):
+        if permission is None:
+            permission = ""
+
+        self.__permission = permission
+
     def setParameters(self, eleStr):
         if eleStr is None:
             self.__parameters = dict()
             return
 
+        cpyStr = eleStr.strip("; ")
         try:
-            elements = [i.split("=") for i in eleStr.split(";")]
+            elements = [i.split("=") for i in cpyStr.split(";")]
             self.__parameters = dict(elements)
         except:
             print("invalid parameter string:", eleStr)
@@ -155,8 +202,9 @@ class Node:
             self.__fwinfo = dict()
             return
 
+        cpyStr = eleStr.strip("; ")
         try:
-            elements = [i.split("=") for i in eleStr.split(";")]
+            elements = [i.split("=") for i in cpyStr.split(";")]
             self.__fwinfo = dict(elements)
         except:
             print("invalid fwinfo string:", eleStr)
@@ -175,7 +223,7 @@ class Node:
 
     @staticmethod
     def writeNode(node, path="log.txt"):
-        if isinstance(node, Node):
+        if isinstance(node, ParserNode):
             f = open(path, "w")
             stack = [node]
             while (len(stack) > 0):
