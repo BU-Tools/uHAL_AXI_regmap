@@ -33,6 +33,15 @@ class ParserNode:
                 return child
         return None
 
+    def getNodes(self):
+        names = []
+        for child in self.__children:
+            names.append(child.getName())
+        return names
+
+    def getNode(self, s):
+        return getChild(childName)
+
     def getName(self):
         return self.__name
 

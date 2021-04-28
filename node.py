@@ -7,6 +7,7 @@ import time
 import logging
 import math
 import uhal
+import parserNode
 
 import StringIO
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
@@ -17,22 +18,43 @@ EXIT_CODE_NODE_INVALID_ARRAY = 4
 
 class node(object):
     def __init__(self, uhalNode, baseAddress, tree=None, parent=None, index=None):
-        self.parent = parent
-        self.tree = tree
-        # reference to the tree class through parent
-        if self.parent and not self.tree:
-            self.tree = self.parent.tree
-        self.children = []
-        #####
-        self.id = uhalNode.getId()
-        self.mask = uhalNode.getMask()
-        self.description = uhalNode.getDescription()
-        self.permission = self.readpermission(uhalNode.getPermission())
-        self.fwinfo = uhalNode.getFirmwareInfo()
-        self.parameters = uhalNode.getParameters()
-        absolute_address = uhalNode.getAddress()
-        self.address = absolute_address - baseAddress
-        self.array_head = None
+        if isinstance(uhalNode, parserNode):
+            # parser node constructor
+            self.parent = parent
+            self.tree = tree
+            # reference to the tree class through parent
+            if self.parent and not self.tree:
+                self.tree = self.parent.tree
+            self.children = []
+            #####
+            self.id = uhalNode.getName()
+            self.mask = uhalNode.getMask()
+            self.description = uhalNode.getDescription()
+            self.permission = uhalNode.getPermission()
+            self.fwinfo = uhalNode.getFwinfo()
+            self.parameters = uhalNode.getParameters()
+            absolute_address = uhalNode.getAddress()
+            self.address = uhalNode.getRelativeAddress()
+            self.array_head = None
+        else:
+            # uhal node constructor
+            self.parent = parent
+            self.tree = tree
+            # reference to the tree class through parent
+            if self.parent and not self.tree:
+                self.tree = self.parent.tree
+            self.children = []
+            #####
+            self.id = uhalNode.getId()
+            self.mask = uhalNode.getMask()
+            self.description = uhalNode.getDescription()
+            self.permission = self.readpermission(uhalNode.getPermission())
+            self.fwinfo = uhalNode.getFirmwareInfo()
+            self.parameters = uhalNode.getParameters()
+            absolute_address = uhalNode.getAddress()
+            self.address = absolute_address - baseAddress
+            self.array_head = None
+
         # add children
         for childName in uhalNode.getNodes():
             # TODO: are we filtering out registers whose ID contains a '.'?
