@@ -105,7 +105,22 @@ class tree(object):
         return fullName
 
 
-        
+    def buildDefaultBRAM_MOSI(self,name,addr_size,data_size):
+        fullName=name+"_MOSI_t"
+        defaultName="Default_"+fullName
+        with open(self.outFileName,'a') as outFile:
+            ##### Generate and print a VHDL record
+            outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
+            outFile.write("                                                     clk       => '0',\n")
+            outFile.write("                                                     enable    => '0',\n")
+            outFile.write("                                                     wr_enable => '0',\n")
+            outFile.write("                                                     address   => (others => '0'),\n")
+            outFile.write("                                                     wr_data   => (others => '0')\n")
+            outFile.write("  );\n")
+            outFile.close()
+        return defaultName
+
+
     def traversePkg(self, current_node=None, padding='\t'):
         if not current_node:
             current_node = self.root
@@ -134,30 +149,34 @@ class tree(object):
                     package_description[child.id] = ""
                     #get base name for this node
                     bramName=child.getPath(expandArray=False).replace('.','_')
-                    #create the MOSI package as a monitor package and add it to the list
-                    package_mon_entries[child.id]  = self.buildCustomBRAM_MOSI(bramName,
+                    #create the MOSI package as a control package and add it to the list
+                    package_ctrl_entries[child.id]  = self.buildCustomBRAM_MOSI(bramName,
                                                                           child.addrWidth,
                                                                           child.dataWidth)
-                    #create the MISO package as a control package and add it to the list
-                    package_ctrl_entries[child.id] = self.buildCustomBRAM_MISO(bramName,
+                    #create the MISO package as a monitor package and add it to the list
+                    package_mon_entries[child.id] = self.buildCustomBRAM_MISO(bramName,
                                                                           child.addrWidth,
                                                                           child.dataWidth)
+                                                                 
+                    package_ctrl_entry_defaults[child.id] = self.buildDefaultBRAM_MOSI(bramName,
+                                                                                       child.addrWidth,
+                                                                                       child.dataWidth)
                     self.bramCount = self.bramCount + 1;
                     if self.bramCount == 1:
-                        self.bramAddrs  = str(child.getLocalAddress())
-                        self.bramRanges = str(child.addrWidth)
+                        self.bramAddrs  = str(self.bramCount-1)+" => x\""+hex(child.getLocalAddress())[2:].zfill(8)+"\""
+                        self.bramRanges = str(self.bramCount-1)+" => "+str(child.addrWidth)
                     else:
-                        self.bramAddrs  = self.bramAddrs +","+str(child.getLocalAddress())
-                        self.bramRanges = self.bramRanges+","+str(child.addrWidth)
+                        self.bramAddrs  = self.bramAddrs +"\n,\t\t\t"+str(self.bramCount-1)+" => x\""+hex(child.getLocalAddress())[2:].zfill(8)+"\""
+                        self.bramRanges = self.bramRanges+"\n,\t\t\t"+str(self.bramCount-1)+" => "+str(child.addrWidth)
                     
-                    bramTableName=child.getPath(expandArray=False)
-                    self.bram_MOSI_map = self.bram_MOSI_map+"    Ctrl."+bramTableName+"_MOSI.clk       <=  BRAM_MOSI("+str(self.bramCount-1)+").clk;\n"
-                    self.bram_MOSI_map = self.bram_MOSI_map+"    Ctrl."+bramTableName+"_MOSI.enable    <=  BRAM_MOSI("+str(self.bramCount-1)+").enable;\n"
-                    self.bram_MOSI_map = self.bram_MOSI_map+"    Ctrl."+bramTableName+"_MOSI.wr_enable <=  BRAM_MOSI("+str(self.bramCount-1)+").wr_enable;\n"
-                    self.bram_MOSI_map = self.bram_MOSI_map+"    Ctrl."+bramTableName+"_MOSI.address   <=  BRAM_MOSI("+str(self.bramCount-1)+").address("+str(child.addrWidth)+"-1 downto 0);\n"
-                    self.bram_MOSI_map = self.bram_MOSI_map+"    Ctrl."+bramTableName+"_MOSI.wr_data   <=  BRAM_MOSI("+str(self.bramCount-1)+").wr_data("+str(child.dataWidth)+"-1 downto 0);\n\n"
-                    self.bram_MISO_map = self.bram_MISO_map+"    BRAM_MISO("+str(self.bramCount-1)+").rd_data("+str(child.dataWidth)+"-1 downto 0) <= Mon."+bramName+"_MISO.rd_data;\n"  
-                    self.bram_MISO_map = self.bram_MISO_map+"    BRAM_MISO("+str(self.bramCount-1)+").rd_data(31 downto "+str(child.dataWidth)+") <= (others => '0');\n\n"
+                    bramTableName=child.getPath(expandArray=False)[len(current_node.getPath(expandArray=False))+1:]
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".clk       <=  BRAM_MOSI("+str(self.bramCount-1)+").clk;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".enable    <=  BRAM_MOSI("+str(self.bramCount-1)+").enable;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".wr_enable <=  BRAM_MOSI("+str(self.bramCount-1)+").wr_enable;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".address   <=  BRAM_MOSI("+str(self.bramCount-1)+").address("+str(child.addrWidth)+"-1 downto 0);\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".wr_data   <=  BRAM_MOSI("+str(self.bramCount-1)+").wr_data("+str(child.dataWidth)+"-1 downto 0);\n\n"
+                    self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data("+str(child.dataWidth)+"-1 downto 0) <= Mon."+bramTableName+".rd_data;\n"  
+                    self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data(31 downto "+str(child.dataWidth)+") <= (others => '0');\n\n"
                 else:
                     bitCount = bin(child.mask)[2:].count('1')
                     package_entries = ""

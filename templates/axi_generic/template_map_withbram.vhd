@@ -2,10 +2,12 @@
 --Modifications might be lost.
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_misc.all;
 use ieee.numeric_std.all;
 use work.AXIRegWidthPkg.all;
 use work.AXIRegPkg.all;
 use work.types.all;
+{% if bram_count %}use work.BRAMPortPkg.all;{% endif %}
 use work.{{baseName}}_Ctrl.all;
 entity {{baseName}}_interface is
   port (
@@ -34,10 +36,10 @@ architecture behavioral of {{baseName}}_interface is
   {% if bram_count %}
   constant BRAM_COUNT       : integer := {{bram_count}};
   signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
-  constant BRAM_range       : int_array_t(BRAM_COUNT-1 downto 0) := ({{bram_ranges}});
-  constant BRAM_addr        : slv32_array_t(BRAM_COUNT-1 downto 0) := ({{bram_addrs}});
-  signal BRAM_MOSI          : BRAMPortMOSI_array_t(BRAM_COUNT-1 downto 0);
-  signal BRAM_MISO          : BRAMPortMISO_array_t(BRAM_COUNT-1 downto 0);
+  constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
+  constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
+  signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
+  signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
   
   signal reg_data :  slv32_array_t(integer range 0 to {{regMapSize}});
@@ -63,6 +65,11 @@ begin  -- architecture behavioral
       read_req    => localRdReq,
       read_ack    => localRdAck);
 
+  -------------------------------------------------------------------------------
+  -- Record read decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+
   latch_reads: process (clk_axi) is
   begin  -- process latch_reads
     if clk_axi'event and clk_axi = '1' then  -- rising clock edge
@@ -83,7 +90,7 @@ begin  -- architecture behavioral
   end process latch_reads;
 
   
-  localRdAck <= regRdAck {% if bram_count %}or or_reduce(latchBRAM(iBRAM)) {% endif %};  
+  localRdAck <= regRdAck {% if bram_count %}or or_reduce(latchBRAM) {% endif %};  
   reads: process (localRdReq,localAddress,reg_data) is
   begin  -- process reads
     regRdAck  <= '0';
@@ -102,19 +109,12 @@ begin  -- architecture behavioral
     end if;
   end process reads;
 
-{% if bram_count %}  
-  bRAM_reads: process (localRdReq,localAddress) is
-  begin  -- process bRAM_reads
-      for iBRAM in 0 to BRAM_COUNT-1 loop
-        latchBRAM(iBRAM) <= '0';
-        if (localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
-          latchBRAM(iBRAM) <= '1';
-        end if;
-      end loop;  -- iBRAM    
-  end process bRAM_reads;
-{% endif %}
-
 {% if w_ops_output %}
+  -------------------------------------------------------------------------------
+  -- Record write decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+
   -- Register mapping to ctrl structures
 {{rw_ops_output}}
 
@@ -135,27 +135,46 @@ begin  -- architecture behavioral
   end process reg_writes;
 {% endif %}
 
+
+{% if bram_count %}  
+  -------------------------------------------------------------------------------
+  -- BRAM decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+
+  BRAM_reads: process (localRdReq,localAddress) is
+  begin  -- process BRAM_reads
+      for iBRAM in 0 to BRAM_COUNT-1 loop
+        latchBRAM(iBRAM) <= '0';
+        if localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
+          latchBRAM(iBRAM) <= '1';
+        end if;
+      end loop;  -- iBRAM    
+  end process BRAM_reads;
+{% endif %}
+
 {% if bram_count %}
   BRAM_addrs: for iBRAM in 0 to BRAM_COUNT-1 generate
     BRAM_MOSI(iBRAM).address <= localAddress;
     BRAM_MOSI(iBRAM).enable  <= '1';
     BRAM_MOSI(iBRAM).clk     <= clk_axi;
+  end generate BRAM_addrs;
 {{bram_MOSI_map}}
 {{bram_MISO_map}}    
-  end generate BRAM_addrs;
+
   
-  bRAM_writes: process (clk_axi) is    
-  begin  -- process bRAM_reads
+  BRAM_writes: process (clk_axi) is    
+  begin  -- process BRAM_reads
     if clk_axi'event and clk_axi = '1' then  -- rising clock edge
       for iBRAM in 0 to BRAM_COUNT-1 loop
-        BRAM_MOSI(iBRAM).wr_en   <= '0';
-        if (localAddress(31 downto BRAM_RANGE(iBRAM)) = BRAM_ADDR(iBRAM)(31 downto BRAM_RANGE(iBRAM)) then
+        BRAM_MOSI(iBRAM).wr_enable   <= '0';
+        if localAddress(31 downto BRAM_RANGE(iBRAM)) = BRAM_ADDR(iBRAM)(31 downto BRAM_RANGE(iBRAM)) then
           BRAM_MOSI(iBRAM).wr_data <= localWrData;
-          BRAM_MOSI(iBRAM).wr_en   <= '1';
+          BRAM_MOSI(iBRAM).wr_enable   <= '1';
         end if;
       end loop;  -- iBRAM
     end if;
-  end process bRAM_reads;
+  end process BRAM_writes;
 {% endif %}
 
   

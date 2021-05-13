@@ -75,7 +75,7 @@ class node(object):
                     sys.exit(EXIT_CODE_NODE_INVALID_MEM)                    
                 
                 self.isMem = True
-                self.addrWidth = size_log2-1
+                self.addrWidth = int(size_log2)
                 
 
         ##### sort children by address and mask
