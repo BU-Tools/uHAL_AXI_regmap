@@ -169,7 +169,9 @@ class tree(object):
                         self.bramAddrs  = self.bramAddrs +"\n,\t\t\t"+str(self.bramCount-1)+" => x\""+hex(child.getLocalAddress())[2:].zfill(8)+"\""
                         self.bramRanges = self.bramRanges+"\n,\t\t\t"+str(self.bramCount-1)+" => "+str(child.addrWidth)
                     
-                    bramTableName=child.getPath(expandArray=False)[len(current_node.getPath(expandArray=False))+1:]
+#                    bramTableName=child.getPath(expandArray=False)[(current_node.getPath(expandArray=False)).find("."):]
+                    bramTableName=child.getPath(expandArray=False)
+                    bramTableName=bramTableName[bramTableName.find(".")+1:]
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".clk       <=  BRAM_MOSI("+str(self.bramCount-1)+").clk;\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".enable    <=  BRAM_MOSI("+str(self.bramCount-1)+").enable;\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".wr_enable <=  BRAM_MOSI("+str(self.bramCount-1)+").wr_enable;\n"
