@@ -38,6 +38,7 @@ architecture behavioral of {{baseName}}_interface is
   signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
+  signal activeBRAM_index   : integer range 0 to BRAM_COUNT;
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
@@ -69,6 +70,18 @@ begin  -- architecture behavioral
   -- Record read decoding
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  read_mux: process (latchBRAM) is
+  begin  -- process read_mux
+    if or_reduce(latchBRAM) = '1' then
+      for iBRAM in 0 to BRAM_COUNT-1 loop
+        if (latchBRAM(iBRAM) = '1') then
+          activeBRAM_index <= iBRAM;
+        end if;
+      end loop;
+    else
+      activeBRAM_index <= BRAM_COUNT;
+    end if;
+  end process read_mux;
 
   latch_reads: process (clk_axi,reset_axi_n) is
   begin  -- process latch_reads
@@ -78,16 +91,10 @@ begin  -- architecture behavioral
       localRdAck <= regRdAck or {% if bram_count %} or_reduce(latchBRAM){% endif %};
 
       if regRdAck = '1' then
-        localRdData_latch <= localRdData;
+        localRdData_latch <= localRdData;{% if bram_count %}
+      elsif activeBRAM_index /= BRAM_COUNT then
+        localRdData_latch <= BRAM_MISO(activeBRAM_index).rd_data;{% endif %}          
       end if;
-
-      {% if bram_count %}
-      for iBRAM in 0 to BRAM_COUNT-1 loop
-        if (latchBRAM(iBRAM) = '1') then
-          localRdData_latch <= BRAM_MISO(iBRAM).rd_data;          
-        end if;
-      end loop;  -- iBRAM
-      {% endif %}
           
     end if;
   end process latch_reads;
