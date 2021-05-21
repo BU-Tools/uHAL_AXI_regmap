@@ -25,6 +25,7 @@ entity {{baseName}}_interface is
 end entity {{baseName}}_interface;
 architecture behavioral of {{baseName}}_interface is
   signal localAddress       : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
+  signal localRdAddress       : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
   signal localRdData        : slv_32_t;
   signal localRdData_latch  : slv_32_t;
   signal localWrData        : slv_32_t;
@@ -36,8 +37,8 @@ architecture behavioral of {{baseName}}_interface is
   {% if bram_count %}
   constant BRAM_COUNT       : integer := {{bram_count}};
   signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
-  constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
-  constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
+  constant BRAM_RANGE       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
+  constant BRAM_ADDR        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
@@ -50,7 +51,7 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
-  AXIRegBridge : entity work.axiLiteReg
+  AXIRegBridge : entity work.axiLiteRegBlocking
     port map (
       clk_axi     => clk_axi,
       reset_axi_n => reset_axi_n,
@@ -73,39 +74,43 @@ begin  -- architecture behavioral
   latch_reads: process (clk_axi) is
   begin  -- process latch_reads
     if clk_axi'event and clk_axi = '1' then  -- rising clock edge
+      
       if localRdReq = '1' then
-        localRdData_latch <= localRdData;
+        localRdAddress <= localAddress;       
+      end if;
 
-        {% if bram_count %}
+      localRdAck <= '0';
+      if regRdAck = '1' then
+        localRdData_latch <= localRdData;
+        localRdAck <= '1';
+{% if bram_count %}
+      else
         for iBRAM in 0 to BRAM_COUNT-1 loop
-          latchBRAM(iBRAM) <= '0';
           if (latchBRAM(iBRAM) = '1') then
             localRdData_latch <= BRAM_MISO(iBRAM).rd_data;
+            localRdAck <= '1';
           end if;
         end loop;  -- iBRAM
         {% endif %}
-          
-      end if;
+      end if;        
     end if;
   end process latch_reads;
 
-  
-  localRdAck <= regRdAck {% if bram_count %}or or_reduce(latchBRAM) {% endif %};  
-  reads: process (localRdReq,localAddress,reg_data) is
+  reads: process (clk_axi) is
   begin  -- process reads
-    regRdAck  <= '0';
-    localRdData <= x"00000000";
-    if localRdReq = '1' then
-      regRdAck  <= '1';
-      case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
+    if clk_axi'event and clk_axi = '1' then  -- rising clock edge
+      regRdAck  <= '0';
+      if localRdReq = '1' then
+        regRdAck  <= '1';
+        case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
 
 {{r_ops_output}}
 
         when others =>
           localRdData <= x"00000000";
-      end case;
-      
-
+          regRdAck  <= '0';
+        end case;      
+      end if;
     end if;
   end process reads;
 
@@ -142,23 +147,33 @@ begin  -- architecture behavioral
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
 
-  BRAM_reads: process (localRdReq,localAddress) is
+  BRAM_reads: process (clk_axi) is
   begin  -- process BRAM_reads
+    if clk_axi'event and clk_axi = '1' then  -- rising clock edge
       for iBRAM in 0 to BRAM_COUNT-1 loop
-        latchBRAM(iBRAM) <= '0';
-        if localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
-          latchBRAM(iBRAM) <= '1';
+        latchBRAM(iBRAM) <= '0';        
+        if localAddress({{regAddrRange}} downto BRAM_RANGE(iBRAM)) = BRAM_ADDR(iBRAM)({{regAddrRange}} downto BRAM_RANGE(iBRAM)) then
+          latchBRAM(iBRAM) <= localRdReq;          
         end if;
-      end loop;  -- iBRAM    
+      end loop;  -- iBRAM
+    end if;
   end process BRAM_reads;
 {% endif %}
 
 {% if bram_count %}
-  BRAM_addrs: for iBRAM in 0 to BRAM_COUNT-1 generate
-    BRAM_MOSI(iBRAM).address <= localAddress;
-    BRAM_MOSI(iBRAM).enable  <= '1';
+  BRAMs: for iBRAM in 0 to BRAM_COUNT-1 generate    
     BRAM_MOSI(iBRAM).clk     <= clk_axi;
-  end generate BRAM_addrs;
+
+    BRAM_addrs: process (clk_axi) is
+    begin  -- process BRAM_reads
+      if clk_axi'event and clk_axi = '1' then  -- rising clock edge
+        BRAM_MOSI(iBRAM).address <= localAddress;
+        BRAM_MOSI(iBRAM).enable  <= '1';
+      end if;
+    end process  BRAM_addrs;
+    
+  end generate BRAMs;
+
 {{bram_MOSI_map}}
 {{bram_MISO_map}}    
 
@@ -168,9 +183,9 @@ begin  -- architecture behavioral
     if clk_axi'event and clk_axi = '1' then  -- rising clock edge
       for iBRAM in 0 to BRAM_COUNT-1 loop
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
-        if localAddress(31 downto BRAM_RANGE(iBRAM)) = BRAM_ADDR(iBRAM)(31 downto BRAM_RANGE(iBRAM)) then
-          BRAM_MOSI(iBRAM).wr_data <= localWrData;
-          BRAM_MOSI(iBRAM).wr_enable   <= '1';
+        if localAddress({{regAddrRange}} downto BRAM_RANGE(iBRAM)) = BRAM_ADDR(iBRAM)({{regAddrRange}} downto BRAM_RANGE(iBRAM)) then
+          BRAM_MOSI(iBRAM).wr_data     <= localWrData;
+          BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;
         end if;
       end loop;  -- iBRAM
     end if;
