@@ -70,25 +70,13 @@ begin  -- architecture behavioral
   -- Record read decoding
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
-  read_mux: process (latchBRAM) is
-  begin  -- process read_mux
-    if or_reduce(latchBRAM) = '1' then
-      for iBRAM in 0 to BRAM_COUNT-1 loop
-        if (latchBRAM(iBRAM) = '1') then
-          activeBRAM_index <= iBRAM;
-        end if;
-      end loop;
-    else
-      activeBRAM_index <= BRAM_COUNT;
-    end if;
-  end process read_mux;
 
   latch_reads: process (clk_axi,reset_axi_n) is
   begin  -- process latch_reads
     if reset_axi_n = '0' then
       localRdAck <= '0';
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
-      localRdAck <= regRdAck or {% if bram_count %} or_reduce(latchBRAM){% endif %};
+      localRdAck <= regRdAck{% if bram_count %} or or_reduce(latchBRAM){% endif %};
 
       if regRdAck = '1' then
         localRdData_latch <= localRdData;{% if bram_count %}
@@ -153,6 +141,18 @@ begin  -- architecture behavioral
   -- BRAM decoding
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  read_mux: process (latchBRAM) is
+  begin  -- process read_mux
+    if or_reduce(latchBRAM) = '1' then
+      for iBRAM in 0 to BRAM_COUNT-1 loop
+        if (latchBRAM(iBRAM) = '1') then
+          activeBRAM_index <= iBRAM;
+        end if;
+      end loop;
+    else
+      activeBRAM_index <= BRAM_COUNT;
+    end if;
+  end process read_mux;
 
   BRAM_reads: for iBRAM in 0 to BRAM_COUNT-1 generate
     BRAM_read: process (clk_axi,reset_axi_n) is
@@ -163,7 +163,7 @@ begin  -- architecture behavioral
         BRAM_MOSI(iBRAM).address <= localAddress;
         BRAM_MOSI(iBRAM).enable  <= '1';
         latchBRAM(iBRAM) <= '0';
-        if localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
+        if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
           latchBRAM(iBRAM) <= localRdReq;
         end if;
       end if;
@@ -186,7 +186,7 @@ begin  -- architecture behavioral
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
-        if localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
+        if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
           BRAM_MOSI(iBRAM).wr_data <= localWrData;
           BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;
         end if;

@@ -15,8 +15,7 @@ class tree(object):
         self.bramAddrs = str()
         self.bram_MOSI_map = str()
         self.bram_MISO_map = str()
-
-
+        self.bram_max_addr = int(0)
 
 
         ##### setup logger
@@ -169,6 +168,9 @@ class tree(object):
                         self.bramAddrs  = self.bramAddrs +"\n,\t\t\t"+str(self.bramCount-1)+" => x\""+hex(child.getLocalAddress())[2:].zfill(8)+"\""
                         self.bramRanges = self.bramRanges+"\n,\t\t\t"+str(self.bramCount-1)+" => "+str(child.addrWidth)
                     
+                    bram_end= child.getLocalAddress() + 2**child.addrWidth
+                    if bram_end > self.bram_max_addr:
+                        self.bram_max_addr = bram_end
 #                    bramTableName=child.getPath(expandArray=False)[(current_node.getPath(expandArray=False)).find("."):]
                     bramTableName=child.getPath(expandArray=False)
                     bramTableName=bramTableName[bramTableName.find(".")+1:]
@@ -403,6 +405,8 @@ class tree(object):
             regMapSize = max(self.read_ops,key=int)
         if len(self.write_ops) and max(self.write_ops,key=int) > regMapSize:
             regMapSize = max(self.write_ops,key=int)
+        if self.bram_max_addr > regMapSize:
+            regMapSize = self.bram_max_addr
         if regMapSize>0:
             regAddrRange=str(int(math.floor(math.log(regMapSize,2))))
         else:
