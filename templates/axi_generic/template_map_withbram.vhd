@@ -163,7 +163,7 @@ begin  -- architecture behavioral
         BRAM_MOSI(iBRAM).address <= localAddress;
         BRAM_MOSI(iBRAM).enable  <= '1';
         latchBRAM(iBRAM) <= '0';
-        if localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
+        if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
           latchBRAM(iBRAM) <= localRdReq;
         end if;
       end if;
@@ -186,7 +186,7 @@ begin  -- architecture behavioral
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
-        if localAddress(31 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(31 downto BRAM_range(iBRAM)) then
+        if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
           BRAM_MOSI(iBRAM).wr_data <= localWrData;
           BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;
         end if;
