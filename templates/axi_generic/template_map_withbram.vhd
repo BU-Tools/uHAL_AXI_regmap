@@ -36,9 +36,9 @@ architecture behavioral of {{baseName}}_interface is
   {% if bram_count %}
   constant BRAM_COUNT       : integer := {{bram_count}};
   signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
+  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
-  signal activeBRAM_index   : integer range 0 to BRAM_COUNT;
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
@@ -76,14 +76,17 @@ begin  -- architecture behavioral
     if reset_axi_n = '0' then
       localRdAck <= '0';
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
-      localRdAck <= regRdAck{% if bram_count %} or or_reduce(latchBRAM){% endif %};
-
+      localRdAck <= '0';
+      {% if bram_count %}delayLatchBRAM <= latchBRAM;{% endif %}
+      
       if regRdAck = '1' then
-        localRdData_latch <= localRdData;{% if bram_count %}
-      elsif activeBRAM_index /= BRAM_COUNT then
-        localRdData_latch <= BRAM_MISO(activeBRAM_index).rd_data;{% endif %}          
+        localRdData_latch <= localRdData;
+        localRdAck <= '1';
+      {% for index in range(bram_count) %}elsif delayLatchBRAM({{loop.index0}}) = '1' then
+        localRdAck <= '1';
+        localRdData_latch <= BRAM_MISO({{loop.index0}}).rd_data;
+{% endfor %}
       end if;
-          
     end if;
   end process latch_reads;
 
@@ -141,18 +144,6 @@ begin  -- architecture behavioral
   -- BRAM decoding
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
-  read_mux: process (latchBRAM) is
-  begin  -- process read_mux
-    if or_reduce(latchBRAM) = '1' then
-      for iBRAM in 0 to BRAM_COUNT-1 loop
-        if (latchBRAM(iBRAM) = '1') then
-          activeBRAM_index <= iBRAM;
-        end if;
-      end loop;
-    else
-      activeBRAM_index <= BRAM_COUNT;
-    end if;
-  end process read_mux;
 
   BRAM_reads: for iBRAM in 0 to BRAM_COUNT-1 generate
     BRAM_read: process (clk_axi,reset_axi_n) is
@@ -172,9 +163,10 @@ begin  -- architecture behavioral
 {% endif %}
 
 {% if bram_count %}
-  BRAM_addrs: for iBRAM in 0 to BRAM_COUNT-1 generate
+  BRAM_asyncs: for iBRAM in 0 to BRAM_COUNT-1 generate
     BRAM_MOSI(iBRAM).clk     <= clk_axi;
-  end generate BRAM_addrs;
+    BRAM_MOSI(iBRAM).wr_data <= localWrData;
+  end generate BRAM_asyncs;
   
 {{bram_MOSI_map}}
 {{bram_MISO_map}}    
@@ -187,7 +179,6 @@ begin  -- architecture behavioral
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
         if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
-          BRAM_MOSI(iBRAM).wr_data <= localWrData;
           BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;
         end if;
       end if;
