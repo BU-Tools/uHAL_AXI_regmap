@@ -98,7 +98,8 @@ class tree(object):
         with open(self.outFileName,'a') as outFile:
             ##### Generate and print a VHDL record
             outFile.write("  type " +fullName+ " is record\n")
-            outFile.write("    rd_data   : std_logic_vector("+str(data_size)+"-1 downto 0);\n")
+            outFile.write("    rd_data         : std_logic_vector("+str(data_size)+"-1 downto 0);\n")
+            outFile.write("    rd_data_valid   : std_logic;\n")
             outFile.write("  end record " +fullName+ ";\n")
             outFile.close()
         return fullName
@@ -180,7 +181,8 @@ class tree(object):
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".address   <=  BRAM_MOSI("+str(self.bramCount-1)+").address("+str(child.addrWidth)+"-1 downto 0);\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName+".wr_data   <=  BRAM_MOSI("+str(self.bramCount-1)+").wr_data("+str(child.dataWidth)+"-1 downto 0);\n\n"
                     self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data("+str(child.dataWidth)+"-1 downto 0) <= Mon."+bramTableName+".rd_data;\n"  
-                    self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data(31 downto "+str(child.dataWidth)+") <= (others => '0');\n\n"
+                    self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data(31 downto "+str(child.dataWidth)+") <= (others => '0');\n"
+                    self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data_valid <= Mon."+bramTableName+".rd_data_valid;\n\n"  
                 else:
                     bitCount = bin(child.mask)[2:].count('1')
                     package_entries = ""

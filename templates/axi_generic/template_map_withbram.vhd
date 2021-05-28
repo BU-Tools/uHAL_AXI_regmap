@@ -77,12 +77,11 @@ begin  -- architecture behavioral
       localRdAck <= '0';
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
       localRdAck <= '0';
-      {% if bram_count %}delayLatchBRAM <= latchBRAM;{% endif %}
       
       if regRdAck = '1' then
         localRdData_latch <= localRdData;
         localRdAck <= '1';
-      {% for index in range(bram_count) %}elsif delayLatchBRAM({{loop.index0}}) = '1' then
+      {% for index in range(bram_count) %}elsif BRAM_MISO({{loop.index0}}).rd_data_valid = '1' then
         localRdAck <= '1';
         localRdData_latch <= BRAM_MISO({{loop.index0}}).rd_data;
 {% endfor %}
@@ -150,12 +149,14 @@ begin  -- architecture behavioral
     begin  -- process BRAM_reads
       if reset_axi_n = '0' then
         latchBRAM(iBRAM) <= '0';
+        BRAM_MOSI(iBRAM).enable  <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).address <= localAddress;
-        BRAM_MOSI(iBRAM).enable  <= '1';
         latchBRAM(iBRAM) <= '0';
+        BRAM_MOSI(iBRAM).enable  <= '0';
         if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
           latchBRAM(iBRAM) <= localRdReq;
+          BRAM_MOSI(iBRAM).enable  <= '1';
         end if;
       end if;
     end process BRAM_read;
