@@ -385,7 +385,7 @@ class tree(object):
                     self.default_ops+="reg_data("+str(child.getLocalAddress()).rjust(2)+")("+bits+") <= "+("CTRL_t."+child.getPath(includeRoot=False,expandArray=True))+";\n"
                 elif child.permission == 'w':
                     if self.write_ops.has_key(child.getLocalAddress()):
-                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
+                        self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress()] + ("Ctrl."+child.getPath(includeRoot=False,expandArray=True)) + " <= localWrData("+bits+");\n"
                     else:                                                     
                         self.write_ops[child.getLocalAddress()] = ("Ctrl."+child.getPath(includeRoot=False,expandArray=True)) + " <= localWrData("+bits+");\n"
                     #determin if this is a vector or a single entry
