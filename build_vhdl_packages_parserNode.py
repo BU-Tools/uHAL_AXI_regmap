@@ -23,7 +23,7 @@ def writeMap(m, path="tempDupError.txt"):
                     item.getName(), item.getFilePath()))
 
 
-def buildTree(parentNode, filepath, currentElement=None):
+def buildTree(parentNode, filepath, currentElement=None, init=False):
     """
     recursive function for building the tree
     two scenarios
@@ -36,8 +36,12 @@ def buildTree(parentNode, filepath, currentElement=None):
         parser = etree.XMLParser(remove_comments=True)
         tree = etree.parse(f, parser=parser)
         root = tree.getroot()
+        f.close()
     else:
         root = currentElement
+
+    if init:
+        parentNode.setName(root.attrib.get("id"))
 
     queue = []
     for child in root:
@@ -57,7 +61,7 @@ def buildTree(parentNode, filepath, currentElement=None):
         # add childNode to parent
         parentNode.addChild(childNode)
 
-        #
+        # addressMap = {address1: {mask1: [node1, node2], mask2: [node3]}, address2: {mask1: [node4]}}
         addressMap.setdefault(childNode.getAddress(), {})
         addressMap[childNode.getAddress()].setdefault(childNode.getMask(), [])
         addressMap[childNode.getAddress()][childNode.getMask()
@@ -137,7 +141,19 @@ def overlapAddress():
     overlapMap = dict()
 
     for addr in addressMap.keys():
-        total = 0
+        nodesInAddr = []
+
+        for mask in addressMap[addr].keys():
+            for n in addressMap[addr][mask]:
+                nodesInAddr.append(n)
+
+        for i, n1 in enumerate(nodesInAddr):
+            for j, n2 in enumerate(nodesInAddr):
+                if i == j:
+                    continue
+
+                # if n1.getMas
+
         for i, mask in enumerate(addressMap[addr].keys()):
             for j, mask2 in enumerate(addressMap[addr].keys()):
                 if mask == -1 or mask2 == -1 or i == j:
@@ -153,7 +169,7 @@ def overlapAddress():
 
 def main(inFile):
     root = ParserNode(name='Root')
-    buildTree(root, inFile)
+    buildTree(root, inFile, init=True)
     ParserNode.writeNode(root, path="temp.txt")
 
     for child in root.getChildren():
@@ -192,3 +208,9 @@ if __name__ == "__main__":
         exit
 
     main(inFile)
+
+# add the command line argument for choosing between uhal and my own parser
+# if the computer doesnt have uhal
+# add a file "generate_vhdl" that just choose between uhal or custom parser
+# https://github.com/apollo-lhc/SM_ZYNQ_FW/blob/feature/moved_axi_pkg/scripts/preBuild.py#L26 look at def GenerateHDL
+# write documentation for my parser code
