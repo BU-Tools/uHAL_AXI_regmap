@@ -332,7 +332,7 @@ class tree(object):
                 elif child.permission == 'w':
                     if child.getLocalAddress() in self.write_ops:
                         self.write_ops[child.getLocalAddress()] = self.write_ops[child.getLocalAddress(
-                        )] + ("Ctrl."+child.getPath(includeRoot=False)) + " <= localWrData("+bits+");\n"
+                        )] + ("Ctrl."+child.getPath(includeRoot=False, expandArray=True)) + " <= localWrData("+bits+");\n"
                     else:
                         self.write_ops[child.getLocalAddress()] = (
                             "Ctrl."+child.getPath(includeRoot=False, expandArray=True)) + " <= localWrData("+bits+");\n"

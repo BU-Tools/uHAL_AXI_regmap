@@ -20,6 +20,5 @@ xml_regmap : $(MAP_OBJS)
 %_map.vhd %_PKG.vhd : %.xml
 	@cd $(dir $<) &&\
 	../../$(XML2VHD_PATH)/generate_test_xml $(basename $(notdir $<)) &&\
-	../../$(XML2VHD_PATH)/build_vhdl_packages test.xml &&\
+	../../$(XML2VHD_PATH)/build_vhdl_packages_parserNode.py test.xml &&\
 	rm test.xml
-
