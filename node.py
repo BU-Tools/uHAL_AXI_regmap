@@ -75,7 +75,7 @@ class node(object):
         self.children = sorted(
             self.children, key=lambda child: (child.address << 32) + child.mask)
 
-    ### re-implemented in array_node
+    # re-implemented in array_node
     def getLocalAddress(self):
         if self.parent:
             return self.address + self.parent.getLocalAddress()
