@@ -241,12 +241,12 @@ class tree(object):
                     elif child.permission == 'rw':
                         package_ctrl_entries[child.id] = package_entries
                         # store data for default signal
-                        if child.parameters.has_key("default"):
+                        if "default" in child.parameters:
                             intValue = int(child.parameters["default"], 0)
                             if bits.find("downto") > 0:
                                 if bitCount % 4 == 0:
                                     package_ctrl_entry_defaults[child.id] = "x\"" + hex(
-                                        intValue)[2:].zfill(bitCount/4) + "\""
+                                        intValue)[2:].zfill(int(bitCount/4)) + "\""
                                 else:
                                     package_ctrl_entry_defaults[child.id] = "\"" + bin(
                                         intValue)[2:].zfill(bitCount) + "\""
@@ -259,7 +259,7 @@ class tree(object):
                             package_ctrl_entry_defaults[child.id] = "'0'"
                     elif child.permission == 'w':
                         # store data for default signal
-                        if child.parameters.has_key("default"):
+                        if "default" in child.parameters:
                             print("Action register with default value!\n")
                         elif bits.find("downto") > 0:
                             package_ctrl_entry_defaults[child.id] = "(others => '0')"
