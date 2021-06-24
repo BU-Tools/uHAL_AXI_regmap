@@ -209,9 +209,3 @@ if __name__ == "__main__":
         exit
 
     main(inFile)
-
-# add the command line argument for choosing between uhal and my own parser
-# if the computer doesnt have uhal
-# add a file "generate_vhdl" that just choose between uhal or custom parser
-# https://github.com/apollo-lhc/SM_ZYNQ_FW/blob/feature/moved_axi_pkg/scripts/preBuild.py#L26 look at def GenerateHDL
-# write documentation for my parser code
