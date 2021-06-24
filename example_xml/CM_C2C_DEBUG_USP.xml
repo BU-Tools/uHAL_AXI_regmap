@@ -1,0 +1,43 @@
+<node id="LINK_DEBUG">
+  <node id="QPLL_LOCK"          address="0x0" mask="0x00010000" permission="r"  description="DEBUG cplllock" />
+  <node id="CPLL_LOCK"          address="0x0" mask="0x00100000" permission="r"  description="DEBUG cplllock" />
+  <node id="EYESCAN_DATA_ERROR" address="0x0" mask="0x00200000" permission="r"  description="DEBUG eyescan data error" />
+  <node id="EYESCAN_RESET"      address="0x0" mask="0x00400000" permission="rw" description="DEBUG eyescan reset" />
+  <node id="EYESCAN_TRIGGER"    address="0x0" mask="0x00800000" permission="rw" description="DEBUG eyescan trigger" />
+  <node id="DMONITOR"           address="0x0" mask="0x0000FFFF" permission="r"  description="DEBUG d monitor" />
+  <node id="PCS_RSV_DIN"        address="0x1" mask="0x0000FFFF" permission="rw" description="bit 2 is DRP uber reset" />
+
+  <node id="RX" address="0x2">
+    <node id="BUF_STATUS"                      mask="0x00000007" permission="r"  description="DEBUG rx buf status" />
+    <node id="PRBS_ERR"                        mask="0x00000400" permission="r"  description="DEBUG rx PRBS error" />
+    <node id="RESET_DONE"                      mask="0x00000800" permission="r"  description="DEBUG rx reset done" />
+    <node id="BUF_RESET"                       mask="0x00001000" permission="rw" description="DEBUG rx buf reset" />
+    <node id="CDR_HOLD"                        mask="0x00002000" permission="rw" description="DEBUG rx CDR hold" />
+    <node id="DFE_LPM_RESET"                   mask="0x00020000" permission="rw" description="DEBUG rx DFE LPM RESET" />
+    <node id="LPM_EN"                          mask="0x00040000" permission="rw" description="DEBUG rx LPM ENABLE" />
+    <node id="PCS_RESET"                       mask="0x00800000" permission="rw" description="DEBUG rx pcs reset" />
+    <node id="PMA_RESET"                       mask="0x01000000" permission="rw" description="DEBUG rx pma reset" />
+    <node id="PRBS_CNT_RST"                    mask="0x02000000" permission="rw" description="DEBUG rx PRBS counter reset" />
+    <node id="PRBS_SEL"                        mask="0x3C000000" permission="rw" description="DEBUG rx PRBS select" />
+    <node id="RATE"              address="0x1" mask="0x00000007" permission="rw" description="DEBUG rx rate" />
+    
+  </node>
+
+  <node id="TX" address="0x4">
+    <node id="BUF_STATUS"                   mask="0x00000003" permission="r"  description="DEBUG tx buf status" />
+    <node id="RESET_DONE"                   mask="0x00000004" permission="r"  description="DEBUG tx reset done" />
+    <node id="INHIBIT"                      mask="0x00000080" permission="rw" description="DEBUG tx inhibit" />
+    <node id="PCS_RESET"                    mask="0x00008000" permission="rw" description="DEBUG tx pcs reset" />
+    <node id="PMA_RESET"                    mask="0x00010000" permission="rw" description="DEBUG tx pma reset" />
+    <node id="POLARITY"                     mask="0x00020000" permission="rw" description="DEBUG tx polarity" />
+    <node id="POST_CURSOR"                  mask="0x007C0000" permission="rw" description="DEBUG post cursor" />
+    <node id="PRBS_FORCE_ERR"               mask="0x00800000" permission="rw" description="DEBUG force PRBS error" />
+    <node id="PRE_CURSOR"                   mask="0xF8000000" permission="rw" description="DEBUG pre cursor" />
+    <node id="PRBS_SEL"       address="0x1" mask="0x0000000F" permission="rw" description="DEBUG PRBS select" />
+    <node id="DIFF_CTRL"      address="0x1" mask="0x000001F0" permission="rw" description="DEBUG tx diff control" />
+  </node>
+</node>
+
+
+
+

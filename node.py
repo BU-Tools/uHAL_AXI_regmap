@@ -17,47 +17,31 @@ EXIT_CODE_INCORRECT_ARGUMENTS = 1
 EXIT_CODE_ARG_PARSING_ERROR = 2
 EXIT_CODE_NODE_ADDRESS_ERRORS = 3
 EXIT_CODE_NODE_INVALID_ARRAY = 4
+EXIT_CODE_NODE_INVALID_MEM = 5
 
 
 class node(object):
     def __init__(self, uhalNode, baseAddress, tree=None, parent=None, index=None):
-        if isinstance(uhalNode, ParserNode):
-            # parser node constructor
-            self.parent = parent
-            self.tree = tree
-            # reference to the tree class through parent
-            if self.parent and not self.tree:
-                self.tree = self.parent.tree
-            self.children = []
-            #####
-            self.id = uhalNode.getName()
-            self.mask = uhalNode.getMask()
-            self.description = uhalNode.getDescription()
-            self.permission = uhalNode.getPermission()
-            self.fwinfo = uhalNode.getFwinfo()
-            self.parameters = uhalNode.getParameters()
-            absolute_address = uhalNode.getAddress()
-            self.address = uhalNode.getRelativeAddress()
-            self.array_head = None
-        else:
-            # uhal node constructor
-            self.parent = parent
-            self.tree = tree
-            # reference to the tree class through parent
-            if self.parent and not self.tree:
-                self.tree = self.parent.tree
-            self.children = []
-            #####
-            self.id = uhalNode.getId()
-            self.mask = uhalNode.getMask()
-            self.description = uhalNode.getDescription()
-            self.permission = self.readpermission(uhalNode.getPermission())
-            self.fwinfo = uhalNode.getFirmwareInfo()
-            self.parameters = uhalNode.getParameters()
-            absolute_address = uhalNode.getAddress()
-            self.address = absolute_address - baseAddress
-            self.array_head = None
-
+        self.parent = parent
+        self.tree = tree
+        # reference to the tree class through parent
+        if self.parent and not self.tree:
+            self.tree = self.parent.tree
+        self.children = []
+        #####
+        self.id = uhalNode.getId()
+        self.mask = uhalNode.getMask()
+        self.description = uhalNode.getDescription()
+        self.permission = self.readpermission(uhalNode.getPermission())
+        self.fwinfo = uhalNode.getFirmwareInfo()
+        self.parameters = uhalNode.getParameters()
+        self.size = uhalNode.getSize()
+        absolute_address = uhalNode.getAddress()
+        self.address = absolute_address - baseAddress
+        self.array_head = None
+        self.isMem = False
+        self.memWidth = 32
+        self.addrWidth = 32
         # add children
         for childName in uhalNode.getNodes():
             # TODO: are we filtering out registers whose ID contains a '.'?
@@ -71,9 +55,42 @@ class node(object):
                 self.tree.log.critical(
                     "Critical: Attempting to register multiple array type registers but the indices are not continuous!")
                 sys.exit(EXIT_CODE_NODE_INVALID_ARRAY)
+        # validate memory alignment for blockrams
+        if 'type' in self.fwinfo.keys():
+            if "mem" in self.fwinfo['type']:
+                # test if size is a power of two
+                size_log2 = math.log(self.size, 2)
+                if size_log2 != int(round(size_log2)):
+                    self.tree.log.critical(
+                        "Critical: blockram size is not a power of 2!")
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+                # test if the size is big enough for a blockram
+                if size_log2 <= 2:
+                    self.tree.log.critical("Critical: blockram size too small")
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+                # test if the the range is aligned to its address
+                if self.address % (self.size) != 0:
+                    self.tree.log.critical(
+                        "Critical: blockram address "+str(self.address)+" is not aligned to size"+str(self.size))
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+                # test if the mem line is longenough to hold the bitcount
+                if len(self.fwinfo['type']) <= 3:
+                    self.tree.log.critical(
+                        "Critical: blockram data size is missing")
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+                # test if the size is in the valid range
+                self.dataWidth = int(self.fwinfo['type'][8:])
+                if self.dataWidth <= 0 or self.dataWidth > 32:
+                    self.tree.log.critical(
+                        "Critical: blockram data size of "+self.dataWidth+" is out of range")
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+
+                self.isMem = True
+                self.addrWidth = int(size_log2)
+
         # sort children by address and mask
-        self.children = sorted(
-            self.children, key=lambda child: (child.address << 32) + child.mask)
+        self.children = sorted(self.children, key=lambda child: (
+            child.address << 32) + child.mask)
 
     # re-implemented in array_node
     def getLocalAddress(self):

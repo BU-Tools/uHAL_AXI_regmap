@@ -114,10 +114,16 @@ def uhalParser():
             sys.exit(0)
 
     # make sure that exactly one argument was given, later assumed to be the xml file name
-    if len(args) != 1:
+    if len(args) == 0:
         log.critical(
             "Incorrect usage - invalid number of arguments! Make sure that options come before argument.\n" + __doc__)
         sys.exit(EXIT_CODE_INCORRECT_ARGUMENTS)
+    else:
+        top_file = args[0]
+        if len(args) > 1:
+            template_file = args[1]
+        else:
+            template_file = "templates/axi_generic/template_map.vhd"
 
     try:
         device = uhal.getDevice(
@@ -130,7 +136,7 @@ def uhalParser():
         if i.count('.') == 0:
             mytree = tree(device.getNode(i), log)
             mytree.generatePkg()
-            mytree.generateRegMap()
+            mytree.generateRegMap(regMapTemplate=template_file)
 
             # test array-type
             # findArrayType(mytree.root)

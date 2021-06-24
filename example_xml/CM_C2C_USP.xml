@@ -1,0 +1,15 @@
+<node id="C2C">
+  <node id="ENABLE_PHY_CTRL"                 mask="0x0800"     permission="rw" description="phy_lane_control is enabled"               parameters="Table=CM;Column=_4;Row=_2_3;Status=1;show=nz;default=0x1"/>
+  <node id="PHY_LANE_STABLE"   address="0x1" mask="0xFFFFFFFF" permission="rw" description="Contious phy_lane_up signals required to lock phylane control" parameters="default=0xFF"/>
+  <node id="PHY_READ_TIME"     address="0x2" mask="0xFFFFFF"   permission="rw" description="Time spent waiting for phylane to stabilize"   parameters="default=0x4C4B40"/> <!-- 100ms default -->
+
+  <!-- STATUS 0x0 -> 0x0 mapped to 0x04 -> 0x04 -->
+  <node id="STATUS"                 address="0x4" module="file://CM_C2C_Status.xml"/>
+
+  <!-- CTRL 0x0 -> 0x2 mapped to 0x05 -> 0x07 -->
+  <node id="LINK_DEBUG"             address="0x5" module="file://CM_C2C_DEBUG_USP.xml"/>
+
+  <!-- CTRL 0x0 -> 0x9 mapped to 0x10 -> 0x19 -->
+  <node id="CNT"                    address="0x10" module="file://CM_C2C_CNT.xml"/>
+</node>
+  

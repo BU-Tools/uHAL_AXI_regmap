@@ -14,6 +14,13 @@ class tree(object):
         self.action_ops = str()
         self.default_ops = str()
         self.debug = debug
+        self.bramCount = 0
+        self.bramRanges = str()
+        self.bramAddrs = str()
+        self.bram_MOSI_map = str()
+        self.bram_MISO_map = str()
+        self.bram_max_addr = int(0)
+
         # setup logger
         self.log = logger
         # if not self.log:
@@ -81,6 +88,54 @@ class tree(object):
             outfile.close()
         return "DEFAULT_"+baseName
 
+    def buildCustomBRAM_MOSI(self, name, addr_size, data_size):
+        fullName = name+"_MOSI_t"
+        with open(self.outFileName, 'a') as outFile:
+            # Generate and print a VHDL record
+            outFile.write("  type " + fullName + " is record\n")
+            outFile.write("    clk       : std_logic;\n")
+            outFile.write("    enable    : std_logic;\n")
+            outFile.write("    wr_enable : std_logic;\n")
+            outFile.write("    address   : std_logic_vector(" +
+                          str(addr_size)+"-1 downto 0);\n")
+            outFile.write("    wr_data   : std_logic_vector(" +
+                          str(data_size)+"-1 downto 0);\n")
+            outFile.write("  end record " + fullName + ";\n")
+            outFile.close()
+        return fullName
+
+    def buildCustomBRAM_MISO(self, name, addr_size, data_size):
+        fullName = name+"_MISO_t"
+        with open(self.outFileName, 'a') as outFile:
+            # Generate and print a VHDL record
+            outFile.write("  type " + fullName + " is record\n")
+            outFile.write(
+                "    rd_data         : std_logic_vector("+str(data_size)+"-1 downto 0);\n")
+            outFile.write("    rd_data_valid   : std_logic;\n")
+            outFile.write("  end record " + fullName + ";\n")
+            outFile.close()
+        return fullName
+
+    def buildDefaultBRAM_MOSI(self, name, addr_size, data_size):
+        fullName = name+"_MOSI_t"
+        defaultName = "Default_"+fullName
+        with open(self.outFileName, 'a') as outFile:
+            # Generate and print a VHDL record
+            outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
+            outFile.write(
+                "                                                     clk       => '0',\n")
+            outFile.write(
+                "                                                     enable    => '0',\n")
+            outFile.write(
+                "                                                     wr_enable => '0',\n")
+            outFile.write(
+                "                                                     address   => (others => '0'),\n")
+            outFile.write(
+                "                                                     wr_data   => (others => '0')\n")
+            outFile.write("  );\n")
+            outFile.close()
+        return defaultName
+
     def traversePkg(self, current_node=None, padding='\t'):
         if not current_node:
             current_node = self.root
@@ -111,49 +166,106 @@ class tree(object):
                             default_package_entries+" )"
                     package_ctrl_entry_defaults[child.id] = default_package_entries
             else:
-                bitCount = bin(child.mask)[2:].count('1')
-                package_entries = ""
-                if child.isArray():
-                    package_entries = "array("+str(min(child.entries.keys())) + \
-                        ' to ' + str(max(child.entries.keys())) + ') of '
-                if bitCount == 1:
-                    package_entries += "std_logic"
-                else:
-                    package_entries += "std_logic_vector(" + str(
-                        bitCount-1).rjust(2, ' ') + " downto 0)"
+                if child.isMem:
+                    package_description[child.id] = ""
+                    # get base name for this node
+                    bramName = child.getPath(
+                        expandArray=False).replace('.', '_')
+                    # create the MOSI package as a control package and add it to the list
+                    package_ctrl_entries[child.id] = self.buildCustomBRAM_MOSI(bramName,
+                                                                               child.addrWidth,
+                                                                               child.dataWidth)
+                    # create the MISO package as a monitor package and add it to the list
+                    package_mon_entries[child.id] = self.buildCustomBRAM_MISO(bramName,
+                                                                              child.addrWidth,
+                                                                              child.dataWidth)
 
-                package_description[child.id] = child.description
-                bits = child.getBitRange()
-                if child.permission == 'r':
-                    package_mon_entries[child.id] = package_entries
-                elif child.permission == 'rw':
-                    package_ctrl_entries[child.id] = package_entries
-                    # store data for default signal
-                    if "default" in child.parameters:
-                        intValue = int(child.parameters["default"], 0)
-                        if bits.find("downto") > 0:
-                            if bitCount % 4 == 0:
-                                package_ctrl_entry_defaults[child.id] = "x\"" + hex(
-                                    intValue)[2:].zfill(int(bitCount/4)) + "\""
+                    package_ctrl_entry_defaults[child.id] = self.buildDefaultBRAM_MOSI(bramName,
+                                                                                       child.addrWidth,
+                                                                                       child.dataWidth)
+                    self.bramCount = self.bramCount + 1
+                    if self.bramCount == 1:
+                        self.bramAddrs = str(
+                            self.bramCount-1)+" => x\""+hex(child.getLocalAddress())[2:].zfill(8)+"\""
+                        self.bramRanges = str(
+                            self.bramCount-1)+" => "+str(child.addrWidth)
+                    else:
+                        self.bramAddrs = self.bramAddrs + "\n,\t\t\t" + \
+                            str(self.bramCount-1)+" => x\"" + \
+                            hex(child.getLocalAddress())[2:].zfill(8)+"\""
+                        self.bramRanges = self.bramRanges+"\n,\t\t\t" + \
+                            str(self.bramCount-1)+" => "+str(child.addrWidth)
+
+                    bram_end = child.getLocalAddress() + 2**child.addrWidth
+                    if bram_end > self.bram_max_addr:
+                        self.bram_max_addr = bram_end
+#                    bramTableName=child.getPath(expandArray=False)[(current_node.getPath(expandArray=False)).find("."):]
+                    bramTableName = child.getPath(expandArray=False)
+                    bramTableName = bramTableName[bramTableName.find(".")+1:]
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".clk       <=  BRAM_MOSI(" + \
+                        str(self.bramCount-1)+").clk;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".enable    <=  BRAM_MOSI(" + \
+                        str(self.bramCount-1)+").enable;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".wr_enable <=  BRAM_MOSI(" + \
+                        str(self.bramCount-1)+").wr_enable;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".address   <=  BRAM_MOSI("+str(self.bramCount-1) + \
+                        ").address("+str(child.addrWidth)+"-1 downto 0);\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".wr_data   <=  BRAM_MOSI("+str(self.bramCount-1) + \
+                        ").wr_data("+str(child.dataWidth)+"-1 downto 0);\n\n"
+                    self.bram_MISO_map = self.bram_MISO_map+"  BRAM_MISO("+str(self.bramCount-1)+").rd_data("+str(
+                        child.dataWidth)+"-1 downto 0) <= Mon."+bramTableName+".rd_data;\n"
+                    self.bram_MISO_map = self.bram_MISO_map + \
+                        "  BRAM_MISO("+str(self.bramCount-1)+").rd_data(31 downto " + \
+                        str(child.dataWidth)+") <= (others => '0');\n"
+                    self.bram_MISO_map = self.bram_MISO_map + \
+                        "  BRAM_MISO("+str(self.bramCount-1)+").rd_data_valid <= Mon." + \
+                        bramTableName+".rd_data_valid;\n\n"
+                else:
+                    bitCount = bin(child.mask)[2:].count('1')
+                    package_entries = ""
+                    if bitCount == 1:
+                        package_entries += "std_logic"
+                    else:
+                        package_entries += "std_logic_vector(" + str(
+                            bitCount-1).rjust(2, ' ') + " downto 0)"
+
+                    package_description[child.id] = child.description
+                    bits = child.getBitRange()
+                    if child.permission == 'r':
+                        package_mon_entries[child.id] = package_entries
+                    elif child.permission == 'rw':
+                        package_ctrl_entries[child.id] = package_entries
+                        # store data for default signal
+                        if child.parameters.has_key("default"):
+                            intValue = int(child.parameters["default"], 0)
+                            if bits.find("downto") > 0:
+                                if bitCount % 4 == 0:
+                                    package_ctrl_entry_defaults[child.id] = "x\"" + hex(
+                                        intValue)[2:].zfill(bitCount/4) + "\""
+                                else:
+                                    package_ctrl_entry_defaults[child.id] = "\"" + bin(
+                                        intValue)[2:].zfill(bitCount) + "\""
                             else:
-                                package_ctrl_entry_defaults[child.id] = "\"" + bin(
-                                    intValue)[2:].zfill(bitCount) + "\""
+                                package_ctrl_entry_defaults[child.id] = "'"+str(
+                                    intValue)+"'"
+                        elif bits.find("downto") > 0:
+                            package_ctrl_entry_defaults[child.id] = "(others => '0')"
                         else:
-                            package_ctrl_entry_defaults[child.id] = "'" + \
-                                str(intValue)+"'"
-                    elif bits.find("downto") > 0:
-                        package_ctrl_entry_defaults[child.id] = "(others => '0')"
-                    else:
-                        package_ctrl_entry_defaults[child.id] = "'0'"
-                elif child.permission == 'w':
-                    # store data for default signal
-                    if "default" in child.parameters:
-                        print("Action register with default value!\n")
-                    elif bits.find("downto") > 0:
-                        package_ctrl_entry_defaults[child.id] = "(others => '0')"
-                    else:
-                        package_ctrl_entry_defaults[child.id] = "'0'"
-                    package_ctrl_entries[child.id] = package_entries
+                            package_ctrl_entry_defaults[child.id] = "'0'"
+                    elif child.permission == 'w':
+                        # store data for default signal
+                        if child.parameters.has_key("default"):
+                            print("Action register with default value!\n")
+                        elif bits.find("downto") > 0:
+                            package_ctrl_entry_defaults[child.id] = "(others => '0')"
+                        else:
+                            package_ctrl_entry_defaults[child.id] = "'0'"
+                        package_ctrl_entries[child.id] = package_entries
         ret = {}
         if package_mon_entries:
             baseName = current_node.getPath(
@@ -303,6 +415,8 @@ class tree(object):
             if len(child.children) != 0:
                 self.traverseRegMap(child, padding+'\t')
             else:
+                if child.isMem:
+                    continue
                 bits = child.getBitRange()
                 if child.permission == 'r':
                     if child.getLocalAddress() in self.read_ops:
@@ -359,6 +473,8 @@ class tree(object):
             regMapSize = max(self.read_ops, key=int)
         if len(self.write_ops) and max(self.write_ops, key=int) > regMapSize:
             regMapSize = max(self.write_ops, key=int)
+        if self.bram_max_addr > regMapSize:
+            regMapSize = self.bram_max_addr
         if regMapSize > 0:
             regAddrRange = str(int(math.floor(math.log(regMapSize, 2))))
         else:
@@ -378,6 +494,11 @@ class tree(object):
             "a_ops_output": self.generate_a_ops_output(),
             "w_ops_output": self.generate_w_ops_output(),
             "def_ops_output": self.generate_def_ops_output(),
+            "bram_count": self.bramCount,
+            "bram_ranges": self.bramRanges,
+            "bram_addrs": self.bramAddrs,
+            "bram_MOSI_map": self.bram_MOSI_map,
+            "bram_MISO_map": self.bram_MISO_map,
         }
         RegMapOutput = RegMapOutput.render(substitute_mapping)
         # output to file

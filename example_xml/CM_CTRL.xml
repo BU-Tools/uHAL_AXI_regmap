@@ -1,0 +1,10 @@
+<node id="CTRL">
+  <node id="ENABLE_UC"                       mask="0x0001"     permission="rw" description="Tell CM uC to power-up"                    parameters="Table=CM;Column=UC;Row=CM1_REQ;Status=2"/>
+  <node id="ENABLE_PWR"                      mask="0x0002"     permission="rw" description="Tell CM uC to power-up the rest of the CM" parameters="Table=CM;Column=PWR;Row=CM1_REQ;Status=2"/>
+  <node id="OVERRIDE_PWR_GOOD"               mask="0x0004"     permission="rw" description="Ignore power good from CM"                 parameters="Table=CM;Column=_4;Row=CM1_REQ;Status=2"/>
+  <node id="PWR_GOOD"                        mask="0x0008"     permission="r"  description="CM power is good"                          parameters="Table=CM;Column=_4;Row=_2;Status=1"/>
+  <node id="STATE"                           mask="0x00F0"     permission="r"  description="CM power up state"                         parameters="Table=CM;Column=_4;Row=_2;Status=2;Format=t_0_Unknown_1_Reset_2_PowerUpWait_3_Running_4_PowerDown_5_ErrorWait_6_ErrorPowerOff"/>
+  <node id="ERROR_STATE_RESET"               mask="0x0100"     permission="rw" description="CM power is good"                          parameters="Table=CM;Column=_4;Row=_2;Status=1;show=nz"/>
+  <node id="PWR_ENABLED"                     mask="0x0200"     permission="r"  description="power is enabled"                          parameters="Table=CM;Column=PWR;Row=_2;Status=2"/>
+  <node id="IOS_ENABLED"                     mask="0x0400"     permission="r"  description="IOs to CM are enabled"                     parameters="Table=CM;Column=_4;Row=_2;Status=1"/>
+</node>
