@@ -175,10 +175,13 @@ def main(inFile):
     ParserNode.writeNode(root, path="temp.txt")
 
     for child in root.getChildren():
+        cwd = os.getcwd()
         child.setParent(None)
         print("Generating:", child.getName())
         mytree = tree(child)
+        os.chdir(cwd+"/pkg")
         mytree.generatePkg()
+        os.chdir(cwd+"/map")
         mytree.generateRegMap()
         child.setParent(root)
 
