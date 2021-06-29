@@ -45,6 +45,9 @@ class ParserNode:
     def getName(self):
         return self.__name
 
+    def getId(self):
+        return self.getName()
+
     def getDepth(self):
         return self.__depth
 
@@ -85,6 +88,9 @@ class ParserNode:
 
     def getFwinfo(self):
         return self.__fwinfo
+
+    def getFirmwareInfo(self):
+        return self.getFwinfo()
 
     def getAttrib(self):
         return self.__attrib
