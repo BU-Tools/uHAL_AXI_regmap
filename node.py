@@ -6,7 +6,6 @@ import os.path
 import time
 import logging
 import math
-# import uhal
 from parserNode import ParserNode
 try:
     from StringIO import StringIO  # for Python 2
@@ -32,10 +31,13 @@ class node(object):
         self.id = uhalNode.getId()
         self.mask = uhalNode.getMask()
         self.description = uhalNode.getDescription()
-        self.permission = self.readpermission(uhalNode.getPermission())
+        if isinstance(uhalNode, ParserNode):
+            self.permission = uhalNode.getPermission()
+        else:
+            self.permission = self.readpermission(uhalNode.getPermission())
         self.fwinfo = uhalNode.getFirmwareInfo()
         self.parameters = uhalNode.getParameters()
-        self.size = uhalNode.getSize()
+        # self.size = uhalNode.getSize()
         absolute_address = uhalNode.getAddress()
         self.address = absolute_address - baseAddress
         self.array_head = None
@@ -203,6 +205,7 @@ class node(object):
 
     @staticmethod
     def readpermission(permission):
+        import uhal
         if permission == uhal.NodePermission.READ:
             return 'r'
         elif permission == uhal.NodePermission.READWRITE:
