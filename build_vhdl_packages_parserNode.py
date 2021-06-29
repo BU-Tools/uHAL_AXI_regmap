@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 from lxml import etree
 import argparse
 import os
