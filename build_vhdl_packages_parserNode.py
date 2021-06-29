@@ -176,7 +176,6 @@ def main(inFile):
 
     for child in root.getChildren():
         cwd = os.getcwd()
-
         child.setParent(None)
         print("Generating:", child.getName())
         mytree = tree(child)
