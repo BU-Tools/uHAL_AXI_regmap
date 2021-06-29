@@ -20,7 +20,7 @@ EXIT_CODE_NODE_INVALID_MEM = 5
 
 
 class node(object):
-    def __init__(self, uhalNode, baseAddress, tree=None, parent=None, index=None):
+    def __init__(self, nodeObj, baseAddress, tree=None, parent=None, index=None):
         self.parent = parent
         self.tree = tree
         # reference to the tree class through parent
@@ -28,28 +28,28 @@ class node(object):
             self.tree = self.parent.tree
         self.children = []
         #####
-        self.id = uhalNode.getId()
-        self.mask = uhalNode.getMask()
-        self.description = uhalNode.getDescription()
-        if isinstance(uhalNode, ParserNode):
-            self.permission = uhalNode.getPermission()
+        self.id = nodeObj.getId()
+        self.mask = nodeObj.getMask()
+        self.description = nodeObj.getDescription()
+        if isinstance(nodeObj, ParserNode):
+            self.permission = nodeObj.getPermission()
         else:
-            self.permission = self.readpermission(uhalNode.getPermission())
-        self.fwinfo = uhalNode.getFirmwareInfo()
-        self.parameters = uhalNode.getParameters()
-        # self.size = uhalNode.getSize()
-        absolute_address = uhalNode.getAddress()
+            self.permission = self.readpermission(nodeObj.getPermission())
+        self.fwinfo = nodeObj.getFirmwareInfo()
+        self.parameters = nodeObj.getParameters()
+        # self.size = nodeObj.getSize()
+        absolute_address = nodeObj.getAddress()
         self.address = absolute_address - baseAddress
         self.array_head = None
         self.isMem = False
         self.memWidth = 32
         self.addrWidth = 32
         # add children
-        for childName in uhalNode.getNodes():
+        for childName in nodeObj.getNodes():
             # TODO: are we filtering out registers whose ID contains a '.'?
             if childName.count('.') > 0:
                 continue
-            childNode = uhalNode.getNode(childName)
+            childNode = nodeObj.getNode(childName)
             self.addChild(node(childNode, absolute_address, parent=self))
         # validate array type
         for child in self.children:
