@@ -6,13 +6,15 @@ from generate_vhdl import Generate_VHDL
 
 class UnitTest(unittest.TestCase):
     def assertCompareFile(self, targetFile, sampleFile):
-        out = ''
-        with subprocess.Popen(["diff", targetFile, sampleFile], stdout=subprocess.PIPE) as p:
-            out = p.communicate()[0].decode("utf-8")
+        p = subprocess.Popen(
+            ["diff", targetFile, sampleFile], stdout=subprocess.PIPE)
+        out = out = p.communicate()[0].decode("utf-8")
 
         if len(out) != 0:
             failMsg = '\n' + out
             self.fail(failMsg)
+
+        p.terminate()
 
     def test_PLXVC(self):
         Generate_VHDL("PLXVC", "addressTable/modules/plXVC.xml", "",
