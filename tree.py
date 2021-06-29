@@ -291,7 +291,7 @@ class tree(object):
         outFileBase = self.root.id
         self.outFileName = outFileName
         if not self.outFileName:
-            self.outFileName = outFileBase + "_PKG.vhd"
+            self.outFileName = "pkg/" + outFileBase + "_PKG.vhd"
         with open(self.outFileName, 'w') as outFile:
             outFile.write("--This file was auto-generated.\n")
             outFile.write("--Modifications might be lost.\n")
@@ -464,7 +464,7 @@ class tree(object):
     def generateRegMap(self, outFileName=None, regMapTemplate="template_map.vhd"):
         outFileBase = self.root.id
         if not outFileName:
-            outFileName = outFileBase + "_map.vhd"
+            outFileName = "map/" + outFileBase + "_map.vhd"
         # traverse through the tree and fill the ops
         self.traverseRegMap()
         # calculate regMapSize and regAddrRange
