@@ -19,6 +19,7 @@ options:
                                             /opt/cactus/etc/uhal/tools/ipbus_addr_decode.vhd)
 """
 from __future__ import print_function
+import parserNode
 import getopt
 import sys
 import os.path
@@ -72,7 +73,22 @@ def customParser():
     write_ops = dict(list())
     action_ops = str()
 
-    print("hello")
+    root = parserNode.ParserNode(name='Root')
+    customParser = parserNode.ParserTree(root)
+    customParser.buildTree(root, inFile)
+
+    cwd = os.getcwd()
+    for child in root.getChildren():
+        child.setParent(None)
+        print("Generating:", child.getName())
+        mytree = tree(child)
+        os.chdir(cwd+"/pkg")
+        mytree.generatePkg()
+        os.chdir(cwd+"/map")
+        mytree.generateRegMap()
+        child.setParent(root)
+
+    print("done")
 
 
 def uhalParser():
