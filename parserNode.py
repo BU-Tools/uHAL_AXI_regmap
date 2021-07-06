@@ -1,6 +1,71 @@
-class ParserNode:
-    addressMap = dict()
+from __future__ import print_function
+from lxml import etree
+import os
 
+
+class ParserTree:
+    def __init__(self, root=None):
+        self.addressMap = dict()
+        self.root = root
+
+    def buildTree(self, parentNode, filepath, currentElement=None, init=True):
+        """
+        recursive function for building the tree
+        two scenarios
+        with reference from node, currentElement is None
+        without reference, currentElement is last parent element
+        """
+
+        if currentElement is None:
+            f = open(filepath, "rb")
+            parser = etree.XMLParser(remove_comments=True)
+            tree = etree.parse(f, parser=parser)
+            root = tree.getroot()
+            f.close()
+        else:
+            root = currentElement
+
+        if init:
+            parentNode.setName(root.attrib.get("id"))
+
+        queue = []
+        for child in root:
+            queue.append(child)
+
+        while (len(queue) > 0):
+            current = queue.pop(0)
+            currAttr = current.attrib
+
+            # create childNode from
+            childNode = ParserNode(name=currAttr.get("id"), parentNode=parentNode, address=currAttr.get("address"),
+                                   mask=currAttr.get("mask"), base=16, description=currAttr.get("description"), permission=currAttr.get("permission"), path=filepath)
+            childNode.setParameters(currAttr.get("parameters"))
+            childNode.setFwinfo(currAttr.get("fwinfo"))
+            childNode.setAttrib(currAttr)
+            # add childNode to parent
+            parentNode.addChild(childNode)
+
+            # addressMap = {address1: {mask1: [node1, node2], mask2: [node3]}, address2: {mask1: [node4]}}
+            self.addressMap.setdefault(childNode.getAddress(), {})
+            self.addressMap[childNode.getAddress()].setdefault(
+                childNode.getMask(), [])
+            self.addressMap[childNode.getAddress()][childNode.getMask()
+                                                    ].append(childNode)
+
+            if "module" in currAttr:
+                modulePath = currAttr["module"].replace("file://", "")
+                nextPath = os.path.join(os.path.dirname(
+                    filepath), modulePath)
+                # generate rest of tree from reference path
+                self.buildTree(parentNode=childNode,
+                               filepath=nextPath, init=False)
+            else:
+                # generate rest of tree from child nodes
+                self.buildTree(parentNode=childNode, filepath=filepath,
+                               currentElement=current, init=False)
+
+
+class ParserNode:
     def __init__(self, name=None, parentNode=None, address=None, mask=None, base=10, description=None, permission=None, path=""):
         self.setParent(parentNode)
         self.__children = []
