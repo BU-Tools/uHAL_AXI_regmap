@@ -84,7 +84,7 @@ def useCustomParser(topFile, HDLPath="CParser"):
         print("Generating:", child.getName())
         mytree = tree(child)
         mytree.generatePkg()
-        mytree.generateRegMap()
+        mytree.generateRegMap(regMapTemplate=template_file)
         child.setParent(root)
 
     print("done")
