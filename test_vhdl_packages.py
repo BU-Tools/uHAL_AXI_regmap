@@ -1,4 +1,5 @@
 import unittest
+import subprocess
 import shutil
 from build_vhdl_packages import useCustomParser, useUhalParser
 
