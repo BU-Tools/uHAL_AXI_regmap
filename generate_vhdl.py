@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 from tree import *
-from build_vhdl_packages_parserNode import *
+from parserNode import *
 
 
 # useUhal should be a boolean
