@@ -6,9 +6,19 @@ from generate_vhdl import Generate_VHDL
 
 class UnitTest(unittest.TestCase):
     def assertCompareFile(self, targetFile, sampleFile):
+        out = ''
         p = subprocess.Popen(
             ["diff", targetFile, sampleFile], stdout=subprocess.PIPE)
-        out = out = p.communicate()[0].decode("utf-8")
+        out = p.communicate()[0].decode("utf-8")
+        if len(out) != 0:
+            failMsg = '\n' + out
+            self.fail(failMsg)
+        p.terminate()
+
+    def assertCompareDir(self, dir1, dir2):
+        out = ''
+        with subprocess.Popen(["diff", "-r", dir1, dir2], stdout=subprocess.PIPE) as p:
+            out = p.communicate()[0].decode("utf-8")
 
         if len(out) != 0:
             failMsg = '\n' + out
