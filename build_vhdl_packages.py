@@ -67,7 +67,6 @@ def findArrayType(n):
 
 
 def useCustomParser(topFile, HDLPath="CParser"):
-    print("in useCustomParser")
     root = customParser.ParserNode(name='Root')
     cTree = customParser.ParserTree(root)
     cTree.buildTree(root, topFile)
@@ -92,7 +91,7 @@ def useCustomParser(topFile, HDLPath="CParser"):
     os.chdir(cwd)
 
 
-def useUhalParser(topFile, HDLPath="UParser", opts=None):
+def useUhalParser(topFile, HDLPath="UParser", opts=[]):
     # configure logger
     global log
     log = logging.getLogger("main")
@@ -141,19 +140,6 @@ def useUhalParser(topFile, HDLPath="UParser", opts=None):
     os.chdir(cwd)
 
 
-def test(topFile):
-    useCustomParser(inFile, HDLPath="testCustomParserFolder")
-    useUhalParser(HDLPath="testUhalParserFolder")
-
-    out = ''
-    with subprocess.Popen(["diff", "-r", "testCustomParserFolder", "testUhalParserFolder"], stdout=subprocess.PIPE) as p:
-        out = p.communicate()[0].decode("utf-8")
-
-    if len(out) != 0:
-        failMsg = '\n' + out
-        self.fail(failMsg)
-
-
 if __name__ == '__main__':
     global read_ops
     global write_ops
@@ -187,7 +173,6 @@ if __name__ == '__main__':
             template_file = "templates/axi_generic/template_map.vhd"
 
     customParserFlag = False
-    print(opts)
     for o, a in opts:
         if o in ("-c", "--custom"):
             customParserFlag = True
