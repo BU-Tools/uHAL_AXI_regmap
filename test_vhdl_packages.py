@@ -1,4 +1,5 @@
 import unittest
+import shutil
 from build_vhdl_packages import useCustomParser, useUhalParser
 
 
@@ -17,6 +18,8 @@ class UnitTest(unittest.TestCase):
                         HDLPath="CParserTest")
         useUhalParser("addressTable/address_apollo.xml", HDLPath="UParserTest")
         self.assertCompareDir("CParserTest", "UParserTest")
+        shutil.rmtree("CParserTest")
+        shutil.rmtree("UParserTest")
 
 
 if __name__ == "__main__":
