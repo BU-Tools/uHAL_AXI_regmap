@@ -157,14 +157,14 @@ if __name__ == '__main__':
     
     #build the temp file
     try:
-        os.mkdir(args.outpath) #create outpath
+        os.makedirs(args.outpath) #create outpath
     except:
         pass
         
     #check that the path was created
     if not os.path.exists(args.outpath):
-        print("Cannont create "+args.outpath)
-        exit
+        print("Cannot create "+args.outpath)
+        quit()
 
     if len(args.xmlpath) > 0:
         args.xmlpath = os.path.abspath(args.xmlpath)+"/"

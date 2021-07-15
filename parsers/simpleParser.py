@@ -38,7 +38,7 @@ class ParserTree:
 
             # create childNode from
             childNode = ParserNode(name=currAttr.get("id"), parentNode=parentNode, address=currAttr.get("address"),
-                                   mask=currAttr.get("mask"), base=16, description=currAttr.get("description"), permission=currAttr.get("permission"), path=filepath)
+                                   mask=currAttr.get("mask"), description=currAttr.get("description"), permission=currAttr.get("permission"),size=currAttr.get("size"), path=filepath)
             childNode.setParameters(currAttr.get("parameters"))
             childNode.setFwinfo(currAttr.get("fwinfo"))
             childNode.setAttrib(currAttr)
@@ -66,16 +66,17 @@ class ParserTree:
 
 
 class ParserNode:
-    def __init__(self, name=None, parentNode=None, address=None, mask=None, base=10, description=None, permission=None, path=""):
+    def __init__(self, name=None, parentNode=None, address=None, mask=None, description=None, permission=None, size=None, path=""):
         self.setParent(parentNode)
         self.__children = []
 
         self.setName(name)
-        self.setAddress(address, base)
-        self.setRelativeAddress(address, base)
-        self.setMask(mask, base)
+        self.setAddress(address)
+        self.setRelativeAddress(address)
+        self.setMask(mask)
         self.setDescription(description)
         self.setPermission(permission)
+        self.setSize(size)
 
         self.__parameters = dict()
         self.__fwinfo = dict()
@@ -115,6 +116,12 @@ class ParserNode:
 
     def getDepth(self):
         return self.__depth
+
+    def getSize(self, base=10):
+        if base == 16:
+            return hex(self.__size)
+        else:
+            return self.__size
 
     def getAddress(self, base=10):
         if base == 16:
@@ -210,6 +217,11 @@ class ParserNode:
         else:
             self.__name = name
 
+    def setSize(self, size):
+        if size is None:
+            size = 0
+        self.__size=int(str(size),0)
+
     def setDepth(self, depth=None):
         if depth is None:
             if self.__parent is None:
@@ -219,39 +231,26 @@ class ParserNode:
         else:
             self.__depth = depth
 
-    def setAddress(self, addr, base=10):
+    def setAddress(self, addr):
+        
         if addr is None:
             addr = 0
-        elif base == 16:
-            addr = int(str(addr), 16)
-        else:
-            addr = int(str(addr))
+        addr=int(str(addr),0)
 
         if self.__parent is not None:
             self.__address = self.__parent.getAddress() + addr
         else:
             self.__address = addr
 
-    def setRelativeAddress(self, addr, base=10):
+    def setRelativeAddress(self, addr):
         if addr is None:
             addr = 0
-        elif base == 16:
-            addr = int(str(addr), 16)
-        else:
-            addr = int(str(addr))
+        self.__relativeAddress = int(str(addr),0)
 
-        self.__relativeAddress = addr
-
-    def setMask(self, mask, base=10):
+    def setMask(self, mask):
         if mask is None:
-            mask = 4294967295
-
-        elif base == 16:
-            mask = int(str(mask), 16)
-        else:
-            mask = int(str(mask))
-
-        self.__mask = mask
+            mask = int("0xFFFFFFFF",0)
+        self.__mask = int(str(mask),0)
 
     def setDescription(self, description):
         if description is None:
@@ -282,12 +281,14 @@ class ParserNode:
             self.__fwinfo = dict()
             return
 
+
         cpyStr = eleStr.strip("; ")
         try:
-            elements = [i.split("=") for i in cpyStr.split(";")]
-            self.__fwinfo = dict(elements)
+            for i in cpyStr.split(";"):
+                self.__fwinfo[i.split("=")[0]] = i
         except:
             print("invalid fwinfo string:", eleStr)
+            
 
     def setFilePath(self, path):
         self.__filePath = path
