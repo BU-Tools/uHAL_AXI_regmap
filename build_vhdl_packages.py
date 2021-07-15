@@ -1,27 +1,14 @@
 #!/usr/bin/python
 """
-usage: gen_ipus_addr_decode [options] <uhal_address_table.xml>
-
-The script generates the address select logic in the
-file for the ipbus system.
-
 The script takes an uHAL compliant XML input file and prints out the vhdl module.
 
 Note that full address decoding is not performed (would be very
 inefficient with 32b address space), so slaves will appear at many
 locations.
 
-options:
-    -c, --custom                             custom parser
-    -v, --verbose                            verbose
-    -d, --debug                              debug output
-    -t <file>, --template=<file>             uses a different vhdl template file
-                                            (default
-                                            /opt/cactus/etc/uhal/tools/ipbus_addr_decode.vhd)
 """
 from __future__ import print_function
-import customParser
-import getopt
+from parsers import simpleParser,tree,node
 import sys
 import os
 import time
@@ -29,7 +16,7 @@ import logging
 import math
 import argparse
 import shutil
-from tree import *  # import node,arraynode,tree
+#from tree import *  # import node,arraynode,tree
 try:
     from StringIO import StringIO  # for Python 2
 except ImportError:
@@ -39,6 +26,8 @@ try:
     import uhal
 except ImportError:
     uhalFlag = False
+
+from tester import generate_test_xml
 
 
 # ===========================================================================================
@@ -54,8 +43,15 @@ EXIT_CODE_ARG_PARSING_ERROR = 2
 EXIT_CODE_NODE_ADDRESS_ERRORS = 3
 
 
-template_file = "templates/axi_generic/template_map.vhd"
-
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def findArrayType(n):
     if n.isArray():
@@ -66,10 +62,10 @@ def findArrayType(n):
     return
 
 
-def useCustomParser(topFile, HDLPath="CParser"):
-    root = customParser.ParserNode(name='Root')
-    cTree = customParser.ParserTree(root)
-    cTree.buildTree(root, topFile)
+def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
+    root = simpleParser.ParserNode(name='Root')
+    cTree = simpleParser.ParserTree(root)
+    cTree.buildTree(root,test_xml)
 
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
@@ -82,16 +78,16 @@ def useCustomParser(topFile, HDLPath="CParser"):
     for child in root.getChildren():
         child.setParent(None)
         print("Generating:", child.getName())
-        mytree = tree(child)
+        mytree = tree.tree(child)
         mytree.generatePkg()
-        mytree.generateRegMap(regMapTemplate=template_file)
+        mytree.generateRegMap(regMapTemplate=regMapTemplate)
         child.setParent(root)
 
     print("done")
     os.chdir(cwd)
 
 
-def useUhalParser(topFile, HDLPath="UParser", opts=[]):
+def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
     # configure logger
     global log
     log = logging.getLogger("main")
@@ -102,23 +98,19 @@ def useUhalParser(topFile, HDLPath="UParser", opts=[]):
     log.setLevel(logging.WARNING)
     uhal.setLogLevelTo(uhal.LogLevel.WARNING)
 
-    for o, a in opts:
-        if o in ("-v", "--verbose"):
-            log.setLevel(logging.INFO)
-            uhal.setLogLevelTo(uhal.LogLevel.INFO)
-        elif o in ("-d", "--debug"):
-            log.setLevel(logging.DEBUG)
-            uhal.setLogLevelTo(uhal.LogLevel.DEBUG)
-        elif o in ("-h", "--help"):
-            print(__doc__)
-            sys.exit(0)
+    if verbose:
+        log.setLevel(logging.INFO)
+        uhal.setLogLevelTo(uhal.LogLevel.INFO)
+    if debug:
+        log.setLevel(logging.DEBUG)
+        uhal.setLogLevelTo(uhal.LogLevel.DEBUG)
 
     try:
         device = uhal.getDevice(
-            "dummy", "ipbusudp-1.3://localhost:12345", "file://" + topFile)
+            "dummy", "ipbusudp-1.3://localhost:12345", "file://" + test_xml)
     except Exception:
         raise Exception(
-            "File '%s' does not exist or has incorrect format" % topFile)
+            "File '%s' does not exist or has incorrect format" % test_xml)
 
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
@@ -130,9 +122,9 @@ def useUhalParser(topFile, HDLPath="UParser", opts=[]):
 
     for i in device.getNodes():
         if i.count('.') == 0:
-            mytree = tree(device.getNode(i), log)
+            mytree = tree.tree(device.getNode(i), log)
             mytree.generatePkg()
-            mytree.generateRegMap(regMapTemplate=template_file)
+            mytree.generateRegMap(regMapTemplate=regMapTemplate)
 
             # test array-type
             # findArrayType(mytree.root)
@@ -151,33 +143,59 @@ if __name__ == '__main__':
     write_ops = dict(list())
     action_ops = str()
 
+    parser = argparse.ArgumentParser(description="Generate VHDL decoder from XML address table")
+    parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
+    parser.add_argument("--verbose","-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
+    parser.add_argument("--debug","-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
+    parser.add_argument("--mapTemplate","-m",help="Template to use for decoder map file",required=False,default="templates/axi_generic/template_map.vhd")
+    parser.add_argument("--pkgTemplate","-p",help="Template to use for PKG file (not supported yet)",required=False)
+    parser.add_argument("--outpath","-o",help="output path to use",required=False,default="autogen")
+    parser.add_argument("--xmlpath","-x",help="Path where \"name\" xml file is found and its included xml files",required=False,default="")
+    parser.add_argument("name",help="base name of decoder xml file (no .xml)")
+
+    args=parser.parse_args()
+    
+    #build the temp file
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "cvdh:", [
-                                   "custom", "verbose", "debug", "help"])
-    except getopt.GetoptError as err:
-        print("error")
-        # log.critical(__doc__)
-        sys.exit(EXIT_CODE_ARG_PARSING_ERROR)
+        os.mkdir(args.outpath) #create outpath
+    except:
+        pass
+        
+    #check that the path was created
+    if not os.path.exists(args.outpath):
+        print("Cannont create "+args.outpath)
+        exit
 
-    # make sure that exactly one argument was given, later assumed to be the xml file name
-    if len(args) == 0:
-        print("Incorrect usage - invalid number of arguments! Make sure that options come before argument.\n")
-        # log.critical(
-        #     "Incorrect usage - invalid number of arguments! Make sure that options come before argument.\n" + __doc__)
-        sys.exit(EXIT_CODE_INCORRECT_ARGUMENTS)
+    if len(args.xmlpath) > 0:
+        args.xmlpath = os.path.abspath(args.xmlpath)+"/"
     else:
-        top_file = args[0]
-        if len(args) > 1:
-            template_file = args[1]
-        else:
-            template_file = "templates/axi_generic/template_map.vhd"
+        pass
+        #assumed to be in output path
 
-    customParserFlag = False
-    for o, a in opts:
-        if o in ("-c", "--custom"):
-            customParserFlag = True
+    #generate unique(ish) filename for testxml
+    test_xml=""
+    if len(args.outpath) > 0:
+        test_xml=args.outpath+"/"
+    test_xml=test_xml+"test_"+str(int(time.time()))+".xml"
+    
+    generate_test_xml.generate_test_xml(args.name, 0x0, args.xmlpath+args.name+".xml", test_xml)
 
-    if customParserFlag:
-        useCustomParser(args[0])
+    if args.simple:
+        print("Using simple parser")
+        useSimpleParser(test_xml,
+                        args.outpath,
+                        args.mapTemplate,
+                        args.pkgTemplate,
+                        args.verbose,
+                        args.debug)
     else:
-        useUhalParser(args[0], opts=opts)
+        print("Using uHAL parser")
+        useUhalParser(test_xml,
+                      args.outpath,
+                      args.mapTemplate,
+                      args.pkgTemplate,
+                      args.verbose,
+                      args.debug)
+    
+    #delete test file
+#    os.remove(test_xml)
