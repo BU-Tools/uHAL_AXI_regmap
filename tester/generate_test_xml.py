@@ -5,7 +5,6 @@ import logging
 import os.path
 
 def generate_test_xml(pkg_name, address, in_xml_name, test_xml_name="test.xml"):
-    print("opeing file"+test_xml_name)
     outFile=open(test_xml_name,'w')
     #outFile.write("<?This file was auto-generated.?>\n")
     #outFile.write("<?Modifications might be lost.?>\n")

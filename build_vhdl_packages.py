@@ -69,9 +69,6 @@ def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
 
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
-    else:
-        shutil.rmtree(HDLPath)
-        os.makedirs(HDLPath)
     cwd = os.getcwd()
     os.chdir(cwd+"/"+HDLPath)
 
@@ -114,9 +111,6 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
 
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
-    else:
-        shutil.rmtree(HDLPath)
-        os.makedirs(HDLPath)
     cwd = os.getcwd()
     os.chdir(cwd+"/"+HDLPath)
 
@@ -155,16 +149,14 @@ if __name__ == '__main__':
 
     args=parser.parse_args()
     
-    #build the temp file
-    try:
-        os.makedirs(args.outpath) #create outpath
-    except:
-        pass
-        
-    #check that the path was created
+
     if not os.path.exists(args.outpath):
-        print("Cannot create "+args.outpath)
-        quit()
+        print("Creating "+args.outpath)
+        try:
+            os.makedirs(args.outpath) #create outpath
+        except:
+            print("Cannot create "+args.outpath)            
+            quit()
 
     if len(args.xmlpath) > 0:
         args.xmlpath = os.path.abspath(args.xmlpath)+"/"
@@ -198,4 +190,4 @@ if __name__ == '__main__':
                       args.debug)
     
     #delete test file
-#    os.remove(test_xml)
+    os.remove(test_xml)
