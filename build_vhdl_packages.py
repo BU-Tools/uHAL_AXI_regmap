@@ -70,7 +70,8 @@ def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
     cwd = os.getcwd()
-    os.chdir(cwd+"/"+HDLPath)
+    #os.chdir(cwd+"/"+HDLPath)
+    os.chdir(HDLPath)
 
     for child in root.getChildren():
         child.setParent(None)
@@ -126,16 +127,56 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
     os.chdir(cwd)
 
 
-if __name__ == '__main__':
-    global read_ops
-    global write_ops
-    global action_ops
-    global readwrite_ops
 
-    read_ops = dict(list())
-    readwrite_ops = str()
-    write_ops = dict(list())
-    action_ops = str()
+def build_vhdl_packages(simple,verbose,debug,mapTemplate,pkgTemplate,outpath,xmlpath,name):
+###    global read_ops
+###    global write_ops
+###    global action_ops
+###    global readwrite_ops
+###
+###    read_ops = dict(list())
+###    readwrite_ops = str()
+###    write_ops = dict(list())
+###    action_ops = str()
+
+    if not os.path.exists(outpath):
+        print("Creating "+outpath)
+        try:
+            os.makedirs(outpath) #create outpath
+        except:
+            print("Cannot create "+outpath)            
+            quit()
+
+    #generate unique(ish) filename for testxml
+    test_xml=""
+    if len(outpath) > 0:
+        test_xml=outpath+"/"
+    test_xml=test_xml+"test_"+str(int(time.time()))+".xml"
+    
+    generate_test_xml.generate_test_xml(name, 0x0, os.path.abspath(xmlpath), test_xml)
+
+    if simple:
+        print("Using simple parser")
+        useSimpleParser(test_xml,
+                        outpath,
+                        mapTemplate,
+                        pkgTemplate,
+                        verbose,
+                        debug)
+    else:
+        print("Using uHAL parser")
+        useUhalParser(test_xml,
+                      outpath,
+                      mapTemplate,
+                      pkgTemplate,
+                      verbose,
+                      debug)
+    
+    #delete test file
+    os.remove(test_xml)
+
+
+if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Generate VHDL decoder from XML address table")
     parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
@@ -144,50 +185,15 @@ if __name__ == '__main__':
     parser.add_argument("--mapTemplate","-m",help="Template to use for decoder map file",required=False,default="templates/axi_generic/template_map.vhd")
     parser.add_argument("--pkgTemplate","-p",help="Template to use for PKG file (not supported yet)",required=False)
     parser.add_argument("--outpath","-o",help="output path to use",required=False,default="autogen")
-    parser.add_argument("--xmlpath","-x",help="Path where \"name\" xml file is found and its included xml files",required=False,default="")
+    parser.add_argument("--xmlpath","-x",help="Path where first xml file is found and its included xml files",required=False,default="")
     parser.add_argument("name",help="base name of decoder xml file (no .xml)")
 
     args=parser.parse_args()
-    
-
-    if not os.path.exists(args.outpath):
-        print("Creating "+args.outpath)
-        try:
-            os.makedirs(args.outpath) #create outpath
-        except:
-            print("Cannot create "+args.outpath)            
-            quit()
-
-    if len(args.xmlpath) > 0:
-        args.xmlpath = os.path.abspath(args.xmlpath)+"/"
-    else:
-        pass
-        #assumed to be in output path
-
-    #generate unique(ish) filename for testxml
-    test_xml=""
-    if len(args.outpath) > 0:
-        test_xml=args.outpath+"/"
-    test_xml=test_xml+"test_"+str(int(time.time()))+".xml"
-    
-    generate_test_xml.generate_test_xml(args.name, 0x0, args.xmlpath+args.name+".xml", test_xml)
-
-    if args.simple:
-        print("Using simple parser")
-        useSimpleParser(test_xml,
-                        args.outpath,
+    build_vhdl_packages(args.simple,
+                        args.verbose,
+                        args.debug,
                         args.mapTemplate,
                         args.pkgTemplate,
-                        args.verbose,
-                        args.debug)
-    else:
-        print("Using uHAL parser")
-        useUhalParser(test_xml,
-                      args.outpath,
-                      args.mapTemplate,
-                      args.pkgTemplate,
-                      args.verbose,
-                      args.debug)
-    
-    #delete test file
-    os.remove(test_xml)
+                        args.outpath,
+                        args.xmlpath,
+                        args.name)
