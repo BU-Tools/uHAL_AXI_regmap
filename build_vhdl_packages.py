@@ -113,7 +113,7 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
     cwd = os.getcwd()
-    os.chdir(cwd+"/"+HDLPath)
+    os.chdir(os.path.abspath(HDLPath))
 
     for i in device.getNodes():
         if i.count('.') == 0:
