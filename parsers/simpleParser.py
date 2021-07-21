@@ -219,7 +219,7 @@ class ParserNode:
 
     def setSize(self, size):
         if size is None:
-            size = 0
+            size = 1
         self.__size=int(str(size),0)
 
     def setDepth(self, depth=None):
