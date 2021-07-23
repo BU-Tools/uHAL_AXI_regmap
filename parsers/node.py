@@ -6,7 +6,7 @@ import os.path
 import time
 import logging
 import math
-from simpleParser import *
+from .simpleParser import *
 try:
     from StringIO import StringIO  # for Python 2
 except ImportError:

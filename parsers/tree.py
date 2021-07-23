@@ -1,4 +1,4 @@
-from node import *
+from .node import *
 from jinja2 import Template
 try:
     from StringIO import StringIO  # for Python 2
