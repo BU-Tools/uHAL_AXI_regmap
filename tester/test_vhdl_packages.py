@@ -1,7 +1,11 @@
 import unittest
 import subprocess
 import shutil
-from build_vhdl_packages import useCustomParser, useUhalParser
+
+import sys
+sys.path.append(r"..")
+
+from build_vhdl_packages import useSimpleParser, useUhalParser
 
 
 class UnitTest(unittest.TestCase):
@@ -15,9 +19,15 @@ class UnitTest(unittest.TestCase):
         p.terminate()
 
     def test_parser(self):
-        useCustomParser("addressTable/address_apollo.xml",
-                        HDLPath="CParserTest")
-        useUhalParser("addressTable/address_apollo.xml", HDLPath="UParserTest")
+        useSimpleParser(test_xml="../example_xml/MEM_TEST.xml",
+                        HDLPath="CParserTest",
+                        regMapTemplate="../templates/axi_generic/template_map_withbram.vhd",
+                        pkgTemplate="",
+                        )
+        useUhalParser(test_xml="../example_xml/MEM_TEST.xml",
+                      regMapTemplate="../templates/axi_generic/template_map_withbram.vhd",
+                      pkgTemplate="",
+                      HDLPath="UParserTest")
         self.assertCompareDir("CParserTest", "UParserTest")
         shutil.rmtree("CParserTest")
         shutil.rmtree("UParserTest")

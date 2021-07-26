@@ -62,7 +62,7 @@ def findArrayType(n):
     return
 
 
-def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
+def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose=False,debug=False):
     root = simpleParser.ParserNode(name='Root')
     cTree = simpleParser.ParserTree(root)
     cTree.buildTree(root,test_xml)
@@ -85,7 +85,7 @@ def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
     os.chdir(cwd)
 
 
-def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose,debug):
+def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate,verbose=False,debug=False):
     # configure logger
     global log
     log = logging.getLogger("main")
