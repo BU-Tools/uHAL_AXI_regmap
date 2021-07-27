@@ -1,4 +1,9 @@
-from .node import *
+from . import node
+import math
+import os
+import sys
+import re
+
 from jinja2 import Template
 from collections import OrderedDict
 try:
@@ -46,7 +51,7 @@ class tree(object):
         #     self.log.setLevel(logging.WARNING)
         #     uhal.setLogLevelTo(uhal.LogLevel.WARNING)
         # read the root node
-        self.root = node(root, baseAddress=0, tree=self)
+        self.root = node.node(root, baseAddress=0, tree=self)
 
     def generate_yaml (self, baseName, current_node, members, description):
         """ Generate and print a VHDL record into yml2hdl v{x} format"""
