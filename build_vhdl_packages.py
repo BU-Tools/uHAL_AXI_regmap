@@ -1,6 +1,8 @@
 #!/usr/bin/python
 """
-The script takes an uHAL compliant XML input file and prints out the vhdl module.
+
+The script takes an uHAL compliant XML input file
+and prints out the vhdl module.
 
 Note that full address decoding is not performed (would be very
 inefficient with 32b address space), so slaves will appear at many
@@ -8,38 +10,26 @@ locations.
 
 """
 from __future__ import print_function
-from parsers import simpleParser,tree,node
+from parsers import simpleParser, tree
+from tester import generate_test_xml
 import sys
 import os
 import time
 import logging
-import math
 import argparse
-import shutil
 import distutils.util
 
-
-#from tree import *  # import node,arraynode,tree
 try:
     from StringIO import StringIO  # for Python 2
 except ImportError:
     from io import StringIO  # for Python 3
+
 uhalFlag = True
+
 try:
     import uhal
 except ImportError:
     uhalFlag = False
-
-from tester import generate_test_xml
-
-
-# ===========================================================================================
-# In Python 3 "xrange" doesn't exist, since Python 3's "range" is just as efficient as Python 2's "xrange"
-if (sys.version_info[0] > 2):
-    xrange = range
-
-
-# ===========================================================================================
 
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
 EXIT_CODE_ARG_PARSING_ERROR = 2
@@ -62,12 +52,12 @@ def findArrayType(n):
 def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,debug=False):
     root = simpleParser.ParserNode(name='Root')
     cTree = simpleParser.ParserTree(root)
-    cTree.buildTree(root,test_xml)
+    cTree.buildTree(root, test_xml)
 
     if not os.path.exists(HDLPath):
         os.makedirs(HDLPath)
     cwd = os.getcwd()
-    #os.chdir(cwd+"/"+HDLPath)
+
     os.chdir(HDLPath)
 
     for child in root.getChildren():
@@ -125,32 +115,32 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,d
 
 
 
-def build_vhdl_packages(simple,verbose,debug,mapTemplate,pkgTemplate,outpath,xmlpath,name):
-###    global read_ops
-###    global write_ops
-###    global action_ops
-###    global readwrite_ops
-###
-###    read_ops = dict(list())
-###    readwrite_ops = str()
-###    write_ops = dict(list())
-###    action_ops = str()
+    # global read_ops
+    # global write_ops
+    # global action_ops
+    # global readwrite_ops
+    #
+    # read_ops = dict(list())
+    # readwrite_ops = str()
+    # write_ops = dict(list())
+    # action_ops = str()
 
     if not os.path.exists(outpath):
         print("Creating "+outpath)
         try:
-            os.makedirs(outpath) #create outpath
+            os.makedirs(outpath)  # create outpath
         except:
-            print("Cannot create "+outpath)            
+            print("Cannot create "+outpath)
             quit()
 
-    #generate unique(ish) filename for testxml
-    test_xml=""
+    # generate unique(ish) filename for testxml
+    test_xml = ""
     if len(outpath) > 0:
-        test_xml=outpath+"/"
-    test_xml=test_xml+"test_"+str(int(time.time()))+".xml"
-    
-    generate_test_xml.generate_test_xml(name, 0x0, os.path.abspath(xmlpath), test_xml)
+        test_xml = outpath+"/"
+    test_xml = test_xml + "test_" + str(int(time.time())) + ".xml"
+
+    generate_test_xml.generate_test_xml(name, 0x0, os.path.abspath(xmlpath),
+                                        test_xml)
 
     if simple:
         print("Using simple parser")
@@ -185,7 +175,8 @@ if __name__ == '__main__':
     parser.add_argument("--xmlpath","-x",help="Path where first xml file is found and its included xml files",required=False,default="")
     parser.add_argument("name",help="base name of decoder xml file (no .xml)")
 
-    args=parser.parse_args()
+    args = parser.parse_args()
+
     build_vhdl_packages(args.simple,
                         args.verbose,
                         args.debug,
