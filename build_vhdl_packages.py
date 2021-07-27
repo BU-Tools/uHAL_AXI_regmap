@@ -49,7 +49,9 @@ def findArrayType(n):
     return
 
 
-def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,debug=False):
+def useSimpleParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
+                    verbose=False, debug=False, yml2hdl=False):
+
     root = simpleParser.ParserNode(name='Root')
     cTree = simpleParser.ParserTree(root)
     cTree.buildTree(root, test_xml)
@@ -63,7 +65,7 @@ def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False
     for child in root.getChildren():
         child.setParent(None)
         print("Generating:", child.getName())
-        mytree = tree.tree(child)
+        mytree = tree.tree(child, yml2hdl=yml2hdl)
         mytree.generatePkg()
         mytree.generateRegMap(regMapTemplate=regMapTemplate)
         child.setParent(root)
@@ -72,7 +74,20 @@ def useSimpleParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False
     os.chdir(cwd)
 
 
-def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,debug=False):
+def parse_xml(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
+              parser="simple", verbose=False, debug=False, yml2hdl=False):
+    if (parser == "simple"):
+        func = useSimpleParser
+    if (parser == "uhal"):
+        func = useUhalParser
+
+    func(test_xml, HDLPath, regMapTemplate, pkgTemplate,
+         verbose, debug, yml2hdl)
+
+
+def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
+                  verbose=False, debug=False, yml2hdl=False):
+
     # configure logger
     global log
     log = logging.getLogger("main")
@@ -104,7 +119,7 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,d
 
     for i in device.getNodes():
         if i.count('.') == 0:
-            mytree = tree.tree(device.getNode(i), log)
+            mytree = tree.tree(device.getNode(i), log, yml2hdl=yml2hdl)
             mytree.generatePkg()
             mytree.generateRegMap(regMapTemplate=regMapTemplate)
 
@@ -114,6 +129,8 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,d
     os.chdir(cwd)
 
 
+def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
+                        outpath, xmlpath, name, yml2hdl=0):
 
     # global read_ops
     # global write_ops
@@ -143,23 +160,16 @@ def useUhalParser(test_xml,HDLPath,regMapTemplate,pkgTemplate="",verbose=False,d
                                         test_xml)
 
     if simple:
-        print("Using simple parser")
-        useSimpleParser(test_xml,
-                        outpath,
-                        mapTemplate,
-                        pkgTemplate,
-                        verbose,
-                        debug)
+        print("Using Standalone parser")
+        parser = "simple"
     else:
         print("Using uHAL parser")
-        useUhalParser(test_xml,
-                      outpath,
-                      mapTemplate,
-                      pkgTemplate,
-                      verbose,
-                      debug)
-    
-    #delete test file
+        parser = "uhal"
+
+    parse_xml(test_xml, outpath, mapTemplate, pkgTemplate, yml2hdl=yml2hdl,
+              parser=parser, verbose=verbose, debug=debug)
+
+    # delete test file
     os.remove(test_xml)
 
 
@@ -169,6 +179,7 @@ if __name__ == '__main__':
     parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
     parser.add_argument("--verbose","-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
     parser.add_argument("--debug","-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
+    parser.add_argument("--yaml","-y",type=str2bool,help="Enable YAML output",required=False,default=False)
     parser.add_argument("--mapTemplate","-m",help="Template to use for decoder map file",required=False,default="templates/axi_generic/template_map.vhd")
     parser.add_argument("--pkgTemplate","-p",help="Template to use for PKG file (not supported yet)",required=False)
     parser.add_argument("--outpath","-o",help="output path to use",required=False,default="autogen")
@@ -184,4 +195,6 @@ if __name__ == '__main__':
                         args.pkgTemplate,
                         args.outpath,
                         args.xmlpath,
-                        args.name)
+                        args.name,
+                        args.yaml
+                        )

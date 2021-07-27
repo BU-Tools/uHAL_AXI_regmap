@@ -1,0 +1,49 @@
+- MEM_TEST_BUILD_DATE_MON_t:
+  - DAY : [ type: logic, length: 8 ]
+  - MONTH : [ type: logic, length: 8 ]
+  - YEAR : [ type: logic, length: 16 ]
+
+
+- MEM_TEST_BUILD_TIME_MON_t:
+  - SEC : [ type: logic, length: 8 ]
+  - MIN : [ type: logic, length: 8 ]
+  - HOUR : [ type: logic, length: 8 ]
+
+
+- MEM_TEST_FPGA_MON_t:
+  - WORD_00 : [ type: logic, length: 32 ]
+  - WORD_01 : [ type: logic, length: 32 ]
+  - WORD_02 : [ type: logic, length: 32 ]
+  - WORD_03 : [ type: logic, length: 32 ]
+  - WORD_04 : [ type: logic, length: 32 ]
+  - WORD_05 : [ type: logic, length: 32 ]
+  - WORD_06 : [ type: logic, length: 32 ]
+  - WORD_07 : [ type: logic, length: 32 ]
+  - WORD_08 : [ type: logic, length: 32 ]
+
+
+- MEM_TEST_LEVEL_TEST_MON_t:
+  - MEM : [ type: MEM_TEST_LEVEL_TEST_MEM_MISO_t ]
+
+
+- MEM_TEST_LEVEL_TEST_CTRL_t:
+  - THING : [ type: logic, length: 32 ]
+  - MEM : [ type: MEM_TEST_LEVEL_TEST_MEM_MOSI_t ]
+
+
+- MEM_TEST_MON_t:
+  - GIT_VALID : [ type: logic ]
+  - GIT_HASH_1 : [ type: logic, length: 32 ]
+  - GIT_HASH_2 : [ type: logic, length: 32 ]
+  - GIT_HASH_3 : [ type: logic, length: 32 ]
+  - GIT_HASH_4 : [ type: logic, length: 32 ]
+  - GIT_HASH_5 : [ type: logic, length: 32 ]
+  - MEM1 : [ type: MEM_TEST_MEM1_MISO_t ]
+
+
+- MEM_TEST_CTRL_t:
+  - THING : [ type: logic, length: 32 ]
+  - MEM1 : [ type: MEM_TEST_MEM1_MOSI_t ]
+  - LEVEL_TEST : [ type: MEM_TEST_LEVEL_TEST_CTRL_t ]
+
+

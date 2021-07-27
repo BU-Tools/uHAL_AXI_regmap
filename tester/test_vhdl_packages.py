@@ -7,7 +7,7 @@ import sys
 import generate_test_xml
 sys.path.append(r"..")
 
-from build_vhdl_packages import useSimpleParser, useUhalParser
+from build_vhdl_packages import parse_xml
 
 
 class UnitTest(unittest.TestCase):
@@ -45,20 +45,24 @@ class UnitTest(unittest.TestCase):
 
         regmap_template = "../templates/axi_generic/template_map_withbram.vhd"
 
-        useSimpleParser(test_xml=test_xml, HDLPath="CParserTest",
-                        regMapTemplate=regmap_template)
+        tests = [{"path": "CParserTest", "parser": "simple"},
+                 {"path": "UParserTest", "parser": "uhal"}]
 
-        useUhalParser(test_xml=test_xml, HDLPath="UParserTest",
-                      regMapTemplate=regmap_template)
+        # Generate the VHDL Outputs
+        for test in tests:
+            for yml2hdl in [True, False]:
+                parse_xml(test_xml=test_xml, HDLPath=test["path"],
+                          parser=test["parser"], regMapTemplate=regmap_template,
+                          yml2hdl=yml2hdl)
 
-        self.assert_compare_dir("CParserTest", "UParserTest")
-        for i in ["CParserTest", "UParserTest"]:
-            self.assert_git_no_diff(i)
+        # Check that they are equal
+        self.assert_compare_dir(tests[0]["path"], tests[1]["path"])
+
+        # Check that there is no Git diff
+        for test in tests:
+            self.assert_git_no_diff(test["path"])
 
         os.remove(test_xml)
-        # shutil.rmtree("CParserTest")
-        # shutil.rmtree("UParserTest")
-
 
 if __name__ == "__main__":
     unittest.main()

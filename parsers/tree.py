@@ -8,7 +8,7 @@ except ImportError:
 
 
 class tree(object):
-    def __init__(self, root, logger=None, debug=False):
+    def __init__(self, root, logger=None, debug=False, yml2hdl=0):
         self.read_ops = OrderedDict(list())
         self.readwrite_ops = str()
         self.write_ops = OrderedDict(list())
@@ -21,6 +21,18 @@ class tree(object):
         self.bram_MOSI_map = str()
         self.bram_MISO_map = str()
         self.bram_max_addr = int(0)
+
+        # package write selection
+        # version of yml2hdl tool type yml output
+        # 0=disable yml output
+        # 1=yml2hdl v1
+        # 2=yml2hdl v2
+        # etc...
+        #
+        # Actually only 1 version is supported right now and I have no idea what
+        # it is
+
+        self.yml2hdl = yml2hdl
 
         # setup logger
         self.log = logger
@@ -35,6 +47,41 @@ class tree(object):
         #     uhal.setLogLevelTo(uhal.LogLevel.WARNING)
         # read the root node
         self.root = node(root, baseAddress=0, tree=self)
+
+    def generate_yaml (self, baseName, current_node, members, description):
+        """ Generate and print a VHDL record into yml2hdl v{x} format"""
+
+        outFileName = self.outFileName.replace("PKG.vhd", "PKG.yml")
+
+        with open(outFileName, 'a') as outFile:
+
+            outFile.write("- " + baseName+":\n")
+            sorted_members = sorted(members.items(),
+                                    key=lambda item: (current_node.getChild(item[0]).address<<32) + current_node.getChild(item[0]).mask)
+
+            for memberName, member in sorted_members:
+
+                outFile.write("  - " + memberName + " : [ type: ")
+                member_type = re.sub("\(.*\\)", "", member.replace("std_logic_vector", "logic").replace("std_logic", "logic"))
+                outFile.write(member_type)
+                if ("downto" in member):
+                    (high, low) = re.search(r'\((.*?)\)', member).group(1).replace("downto", " ").split()
+                    length = int(high)-int(low)+1
+                    outFile.write(", length: "+str(length))
+
+                # if len(description[memberName]) > 0:
+                #     outFile.write(", description: " + description[memberName])
+
+                outFile.write(" ]\n")
+
+            if current_node.isArray():
+                array_index_string = "array: " + str(1 + max(current_node.entries.keys()))+", type: "
+                # array_index_string = "array: (" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+"), type : "
+                outFile.write("\n- " + baseName + "_ARRAY: [" + array_index_string + baseName + "]")
+
+            outFile.write("\n\n")
+            outFile.close()
+            return
 
     def generateRecord(self, baseName, current_node, members, description):
         with open(self.outFileName, 'a') as outFile:
@@ -66,8 +113,8 @@ class tree(object):
         # TODO: return value here?
         return
 
-    def generateDefaultRecord(self, baseName, defaults):
-        with open(self.outFileName, 'a') as outfile:
+    def generateDefaultRecord(self, baseName, defaults, outFileName):
+        with open(outFileName, 'a') as outfile:
             outfile.write("  constant DEFAULT_" + baseName +
                           " : " + baseName + " := (\n")
             padding_size = 27 + (2 * len(baseName))
@@ -268,16 +315,31 @@ class tree(object):
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_MON_t'
             # print(padding+baseName)
-            ret['mon'] = self.generateRecord(
-                baseName, current_node, package_mon_entries, package_description)
+
+            if self.yml2hdl == 0:
+                ret['mon'] = self.generateRecord(baseName, current_node, package_mon_entries, package_description)
+            if self.yml2hdl == 1 or self.yml2hdl == 2:
+                self.generate_yaml(baseName, current_node, package_mon_entries,
+                                   package_description)
+
         if package_ctrl_entries:
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_CTRL_t'
+
             # print(padding+baseName)
-            ret['ctrl'] = self.generateRecord(
-                baseName, current_node, package_ctrl_entries, package_description)
-            ret["ctrl_default"] = self.generateDefaultRecord(
-                baseName, package_ctrl_entry_defaults)
+
+            ret['ctrl'] = self.generateRecord(baseName, current_node, package_ctrl_entries, package_description)
+
+            def_pkg_name = self.outFileName
+
+            if self.yml2hdl > 0:
+                def_pkg_name = def_pkg_name.replace("PKG.vhd", "PKG_DEF.vhd")
+
+            ret["ctrl_default"] = self.generateDefaultRecord(baseName, package_ctrl_entry_defaults, def_pkg_name)
+
+            if self.yml2hdl > 0:
+                self.generate_yaml(baseName, current_node, package_ctrl_entries, package_description)
+
         return ret
 
     def generatePkg(self, outFileName=None):
@@ -294,9 +356,14 @@ class tree(object):
             outFile.write("--Modifications might be lost.\n")
             outFile.write("library IEEE;\n")
             outFile.write("use IEEE.std_logic_1164.all;\n")
+
+            # yml2hdl libraries
+            if (self.yml2hdl > 0):
+                outFile.write("library shared_lib;\n")
+                outFile.write("use shared_lib.common_ieee.all;\n")
             outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
             outFile.close()
-        records = self.traversePkg()
+        self.traversePkg()
         with open(self.outFileName, 'a') as outFile:
             outFile.write("\n\nend package "+outFileBase+"_CTRL;")
             outFile.close()
