@@ -1,6 +1,9 @@
 import unittest
 import subprocess
 import shutil
+import time
+import generate_test_xml
+import os
 
 import sys
 sys.path.append(r"..")
@@ -19,18 +22,18 @@ class UnitTest(unittest.TestCase):
         p.terminate()
 
     def test_parser(self):
-        useSimpleParser(test_xml="../example_xml/MEM_TEST.xml",
-                        HDLPath="CParserTest",
-                        regMapTemplate="../templates/axi_generic/template_map_withbram.vhd",
-                        pkgTemplate="",
-                        )
-        useUhalParser(test_xml="../example_xml/MEM_TEST.xml",
-                      regMapTemplate="../templates/axi_generic/template_map_withbram.vhd",
-                      pkgTemplate="",
-                      HDLPath="UParserTest")
+
+        test_xml="test_"+str(int(time.time()))+".xml"
+        xmlpath = "../example_xml/MEM_TEST.xml"
+        generate_test_xml.generate_test_xml("MEM_TEST", 0x0, os.path.abspath(xmlpath), test_xml)
+        regMapTemplate="../templates/axi_generic/template_map_withbram.vhd"
+
+        useSimpleParser(test_xml=test_xml, HDLPath="CParserTest", regMapTemplate=regMapTemplate)
+        useUhalParser(test_xml=test_xml, HDLPath="UParserTest", regMapTemplate=regMapTemplate)
         self.assertCompareDir("CParserTest", "UParserTest")
-        shutil.rmtree("CParserTest")
-        shutil.rmtree("UParserTest")
+
+        #shutil.rmtree("CParserTest")
+        #shutil.rmtree("UParserTest")
 
 
 if __name__ == "__main__":
