@@ -32,6 +32,7 @@ class UnitTest(unittest.TestCase):
         useUhalParser(test_xml=test_xml, HDLPath="UParserTest", regMapTemplate=regMapTemplate)
         self.assertCompareDir("CParserTest", "UParserTest")
 
+        os.remove(test_xml)
         #shutil.rmtree("CParserTest")
         #shutil.rmtree("UParserTest")
 
