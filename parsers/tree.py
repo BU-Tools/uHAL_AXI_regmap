@@ -122,17 +122,13 @@ class tree(object):
         defaultName = "Default_"+fullName
         with open(self.outFileName, 'a') as outFile:
             # Generate and print a VHDL record
+            pad = " "*52
             outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
-            outFile.write(
-                "                                                     clk       => '0',\n")
-            outFile.write(
-                "                                                     enable    => '0',\n")
-            outFile.write(
-                "                                                     wr_enable => '0',\n")
-            outFile.write(
-                "                                                     address   => (others => '0'),\n")
-            outFile.write(
-                "                                                     wr_data   => (others => '0')\n")
+            outFile.write("%s clk       => '0',\n" % pad)
+            outFile.write("%s enable    => '0',\n" % pad)
+            outFile.write("%s wr_enable => '0',\n" % pad)
+            outFile.write("%s address   => (others => '0'),\n" % pad)
+            outFile.write("%s wr_data   => (others => '0')\n" % pad)
             outFile.write("  );\n")
             outFile.close()
         return defaultName
