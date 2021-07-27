@@ -1,5 +1,6 @@
 from .node import *
 from jinja2 import Template
+from collections import OrderedDict
 try:
     from StringIO import StringIO  # for Python 2
 except ImportError:
@@ -8,9 +9,9 @@ except ImportError:
 
 class tree(object):
     def __init__(self, root, logger=None, debug=False):
-        self.read_ops = dict(list())
+        self.read_ops = OrderedDict(list())
         self.readwrite_ops = str()
-        self.write_ops = dict(list())
+        self.write_ops = OrderedDict(list())
         self.action_ops = str()
         self.default_ops = str()
         self.debug = debug
@@ -140,11 +141,11 @@ class tree(object):
         if not current_node:
             current_node = self.root
         #print(padding+current_node.id+': ['+str([i.id for i in current_node.children]))
-        package_mon_entries = dict()
-        package_ctrl_entries = dict()
-        package_ctrl_entry_defaults = dict()
-        package_description = dict()
-        package_addr_order = dict()
+        package_mon_entries = OrderedDict()
+        package_ctrl_entries = OrderedDict()
+        package_ctrl_entry_defaults = OrderedDict()
+        package_description = OrderedDict()
+        package_addr_order = OrderedDict()
         for child in current_node.children:
             if len(child.children) != 0:
                 child_records = self.traversePkg(child, padding+'\t')
@@ -284,9 +285,9 @@ class tree(object):
         return ret
 
     def generatePkg(self, outFileName=None):
-        self.read_ops = dict(list())
+        self.read_ops = OrderedDict(list())
         self.readwrite_ops = str()
-        self.write_ops = dict(list())
+        self.write_ops = OrderedDict(list())
         self.action_ops = str()
         outFileBase = self.root.id
         self.outFileName = outFileName
