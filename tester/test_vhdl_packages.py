@@ -37,23 +37,27 @@ class UnitTest(unittest.TestCase):
     def test_parser(self):
         """Test the parser and XML to VHDL generation"""
 
-        test_xml = "test_" + str(int(time.time())) + ".xml"
-        xmlpath = "../example_xml/MEM_TEST.xml"
+        for xml in ["CM_USP", "MEM_TEST"]:
 
-        generate_test_xml.generate_test_xml("MEM_TEST", 0x0,
-                                            os.path.abspath(xmlpath), test_xml)
+            # Generate a dummy top level ipbus XML file for the parser
+            test_xml = "test_" + str(int(time.time())) + ".xml"
+            xml_path = "../example_xml/" + xml + ".xml"
+            generate_test_xml.generate_test_xml(xml, 0x0,
+                                                os.path.abspath(xml_path), test_xml)
 
-        regmap_template = "../templates/axi_generic/template_map_withbram.vhd"
+            regmap_template = "../templates/axi_generic/template_map_withbram.vhd"
 
-        tests = [{"path": "CParserTest", "parser": "simple"},
-                 {"path": "UParserTest", "parser": "uhal"}]
+            tests = [{"path": "CParserTest", "parser": "simple"},
+                     {"path": "UParserTest", "parser": "uhal"}]
 
-        # Generate the VHDL Outputs
-        for test in tests:
-            for yml2hdl in [True, False]:
-                parse_xml(test_xml=test_xml, HDLPath=test["path"],
-                          parser=test["parser"], regMapTemplate=regmap_template,
-                          yml2hdl=yml2hdl)
+            # Generate the VHDL Outputs
+            for test in tests:
+                for yml2hdl in [True, False]:
+                    parse_xml(test_xml=test_xml, HDLPath=test["path"],
+                              parser=test["parser"],
+                              regMapTemplate=regmap_template, yml2hdl=yml2hdl)
+
+            os.remove(test_xml)
 
         # Check that they are equal
         self.assert_compare_dir(tests[0]["path"], tests[1]["path"])
@@ -62,7 +66,6 @@ class UnitTest(unittest.TestCase):
         for test in tests:
             self.assert_git_no_diff(test["path"])
 
-        os.remove(test_xml)
 
 if __name__ == "__main__":
     unittest.main()
