@@ -162,8 +162,7 @@ class tree(object):
         with open(self.outFileName, 'a') as outFile:
             # Generate and print a VHDL record
             outFile.write("  type " + fullName + " is record\n")
-            outFile.write(
-                "    rd_data         : std_logic_vector("+str(data_size)+"-1 downto 0);\n")
+            outFile.write("    rd_data         : std_logic_vector("+str(data_size)+"-1 downto 0);\n")
             outFile.write("    rd_data_valid   : std_logic;\n")
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
