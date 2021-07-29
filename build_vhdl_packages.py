@@ -78,8 +78,11 @@ def parse_xml(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
               parser="simple", verbose=False, debug=False, yml2hdl=False):
     if (parser == "simple"):
         func = useSimpleParser
-    if (parser == "uhal"):
+    elif (parser == "uhal"):
         func = useUhalParser
+    else:
+        print("Unknown parser requested!!")
+        sys.exit(1)
 
     func(test_xml, HDLPath, regMapTemplate, pkgTemplate,
          verbose, debug, yml2hdl)
