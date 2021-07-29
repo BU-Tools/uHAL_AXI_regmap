@@ -6,7 +6,7 @@ import os.path
 import time
 import logging
 import math
-from customParser import *
+from simpleParser import *
 try:
     from StringIO import StringIO  # for Python 2
 except ImportError:
@@ -37,7 +37,7 @@ class node(object):
             self.permission = self.readpermission(nodeObj.getPermission())
         self.fwinfo = nodeObj.getFirmwareInfo()
         self.parameters = nodeObj.getParameters()
-        # self.size = nodeObj.getSize()
+        self.size = nodeObj.getSize()
         absolute_address = nodeObj.getAddress()
         self.address = absolute_address - baseAddress
         self.array_head = None

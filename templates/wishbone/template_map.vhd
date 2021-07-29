@@ -4,7 +4,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.{{baseName}}_Ctrl.all;
-entity {{baseName}}_wb_interface is
+entity {{baseName}}_wb_map is
   port (
     clk         : in  std_logic;
     reset       : in  std_logic;
@@ -18,8 +18,8 @@ entity {{baseName}}_wb_interface is
 {% if r_ops_output %}    mon         : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output %};
     ctrl        : out {{baseName}}_Ctrl_t{% endif %}
     );
-end entity {{baseName}}_wb_interface;
-architecture behavioral of {{baseName}}_wb_interface is
+end entity {{baseName}}_wb_map;
+architecture behavioral of {{baseName}}_wb_map is
   type slv32_array_t  is array (integer range <>) of std_logic_vector( 31 downto 0);
   signal localRdData : std_logic_vector (31 downto 0) := (others => '0');
   signal localWrData : std_logic_vector (31 downto 0) := (others => '0');
