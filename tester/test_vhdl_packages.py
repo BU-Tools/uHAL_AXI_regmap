@@ -5,10 +5,10 @@ import time
 import os
 import sys
 import generate_test_xml
+import tempfile
 sys.path.append(r"..")
 
 from build_vhdl_packages import parse_xml
-
 
 class UnitTest(unittest.TestCase):
     """Unit test class for """
@@ -40,24 +40,34 @@ class UnitTest(unittest.TestCase):
         for xml in ["CM_USP", "MEM_TEST"]:
 
             # Generate a dummy top level ipbus XML file for the parser
-            test_xml = "test_" + str(int(time.time())) + ".xml"
-            xml_path = "../example_xml/" + xml + ".xml"
-            generate_test_xml.generate_test_xml(xml, 0x0,
-                                                os.path.abspath(xml_path), test_xml)
+            (fd, test_xml_name) = tempfile.mkstemp()
+            test_xml_name = test_xml_name + ".xml"
 
-            regmap_template = "../templates/axi_generic/template_map_withbram.vhd"
+            try:
 
-            tests = [{"path": "CParserTest", "parser": "simple"},
-                     {"path": "UParserTest", "parser": "uhal"}]
+                xml_path = "../example_xml/" + xml + ".xml"
+                generate_test_xml.generate_test_xml(xml, 0x0,
+                                                    os.path.abspath(xml_path),
+                                                    test_xml_name)
 
-            # Generate the VHDL Outputs
-            for test in tests:
-                for yml2hdl in [True, False]:
-                    parse_xml(test_xml=test_xml, HDLPath=test["path"],
-                              parser=test["parser"],
-                              regMapTemplate=regmap_template, yml2hdl=yml2hdl)
+                regmap_template = "../templates/axi_generic/template_map_withbram.vhd"
 
-            os.remove(test_xml)
+                tests = [{"path": "CParserTest", "parser": "simple"},
+                        {"path": "UParserTest", "parser": "uhal"}]
+
+                # Generate the VHDL Outputs
+                for test in tests:
+                    for yml2hdl in [True, False]:
+
+                        print("Tester:: %s (testxml=%s) with %s parser to %s" %
+                            (xml, test_xml_name, test["parser"], test["path"]))
+
+                        parse_xml(test_xml=test_xml_name, HDLPath=test["path"],
+                                parser=test["parser"],
+                                regMapTemplate=regmap_template,
+                                yml2hdl=yml2hdl)
+            finally:
+                os.remove(test_xml_name)
 
         # Check that they are equal
         self.assert_compare_dir(tests[0]["path"], tests[1]["path"])
