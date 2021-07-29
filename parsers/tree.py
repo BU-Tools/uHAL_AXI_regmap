@@ -347,12 +347,16 @@ class tree(object):
         return ret
 
     def generatePkg(self, outFileName=None):
+
+        # initialize
         self.read_ops = OrderedDict(list())
         self.readwrite_ops = str()
         self.write_ops = OrderedDict(list())
         self.action_ops = str()
         outFileBase = self.root.id
         self.outFileName = outFileName
+
+        # write the package
         if not self.outFileName:
             self.outFileName = outFileBase + "_PKG.vhd"
         with open(self.outFileName, 'w') as outFile:
@@ -530,28 +534,36 @@ class tree(object):
         return
 
     def generateRegMap(self, outFileName=None, regMapTemplate="template_map.vhd"):
+
+        # if an explicit name is not specified, use the basename + _map.vhd
         outFileBase = self.root.id
         if not outFileName:
             outFileName = outFileBase + "_map.vhd"
+
         # traverse through the tree and fill the ops
         self.traverseRegMap()
+
         # calculate regMapSize and regAddrRange
         regMapSize = 0
+
         if len(self.read_ops) and max(self.read_ops, key=int) > regMapSize:
             regMapSize = max(self.read_ops, key=int)
         if len(self.write_ops) and max(self.write_ops, key=int) > regMapSize:
             regMapSize = max(self.write_ops, key=int)
         if self.bram_max_addr > regMapSize:
             regMapSize = self.bram_max_addr
+
         if regMapSize > 0:
             regAddrRange = str(int(math.floor(math.log(regMapSize, 2))))
         else:
             regAddrRange = '0'
+
         # read the template from template file
         with open(os.path.join(sys.path[0], regMapTemplate)) as template_input_file:
             RegMapOutput = template_input_file.read()
             RegMapOutput = Template(RegMapOutput)
             template_input_file.close()
+
         # Substitute keywords in the template
         substitute_mapping = {
             "baseName": outFileBase,
@@ -568,7 +580,9 @@ class tree(object):
             "bram_MOSI_map": self.bram_MOSI_map,
             "bram_MISO_map": self.bram_MISO_map,
         }
+
         RegMapOutput = RegMapOutput.render(substitute_mapping)
+
         # output to file
         with open(outFileName, 'w') as outFile:
             outFile.write(RegMapOutput)
