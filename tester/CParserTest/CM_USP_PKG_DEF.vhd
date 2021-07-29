@@ -1,3 +1,14 @@
+--This file was auto-generated.
+--Modifications might be lost.
+library IEEE;
+use IEEE.std_logic_1164.all;
+library ctrl_lib;
+use ctrl_lib.CM_USP.all;
+library shared_lib;
+use shared_lib.common_ieee.all;
+
+
+package CM_USP_DEF is
   constant DEFAULT_CM_USP_CM_CTRL_CTRL_t : CM_USP_CM_CTRL_CTRL_t := (
                                                                      ENABLE_UC => '0',
                                                                      ENABLE_PWR => '0',
@@ -63,3 +74,5 @@
   constant DEFAULT_CM_USP_CTRL_t : CM_USP_CTRL_t := (
                                                      CM => (others => DEFAULT_CM_USP_CM_CTRL_t )
                                                     );
+
+end package;

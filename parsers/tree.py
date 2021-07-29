@@ -118,7 +118,7 @@ class tree(object):
         # TODO: return value here?
         return
 
-    def generateDefaultRecord(self, baseName, defaults, outFileName):
+    def generateDefaultRecord(self, baseName, defaults, outFileName, ctrl_file_lib="ctrl_lib"):
         with open(outFileName, 'a') as outfile:
             outfile.write("  constant DEFAULT_" + baseName +
                           " : " + baseName + " := (\n")
@@ -346,7 +346,7 @@ class tree(object):
 
         return ret
 
-    def generatePkg(self, outFileName=None):
+    def generatePkg(self, outFileName=None, ctrl_file_lib="ctrl_lib"):
 
         # initialize
         self.read_ops = OrderedDict(list())
@@ -356,7 +356,7 @@ class tree(object):
         outFileBase = self.root.id
         self.outFileName = outFileName
 
-        # write the package
+        # write the package header
         if not self.outFileName:
             self.outFileName = outFileBase + "_PKG.vhd"
         with open(self.outFileName, 'w') as outFile:
@@ -371,10 +371,39 @@ class tree(object):
                 outFile.write("use shared_lib.common_ieee.all;\n")
             outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
             outFile.close()
+
+        # write the defaults package header
+
+        def_pkg_name = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
+
+        if (self.yml2hdl > 0):
+            with open(def_pkg_name, 'w') as outfile:
+                outfile.write("--This file was auto-generated.\n")
+                outfile.write("--Modifications might be lost.\n")
+                outfile.write("library IEEE;\n")
+                outfile.write("use IEEE.std_logic_1164.all;\n")
+
+                outfile.write("library %s;\n" % ctrl_file_lib)
+                outfile.write("use %s.%s.all;\n" % (ctrl_file_lib, outFileBase))
+
+                outfile.write("library shared_lib;\n")
+                outfile.write("use shared_lib.common_ieee.all;\n")
+
+                outfile.write("\n\npackage "+outFileBase+"_DEF is\n")
+
+        # write the package payload
         self.traversePkg()
+
+        # write the package trailer
         with open(self.outFileName, 'a') as outFile:
             outFile.write("\n\nend package "+outFileBase+"_CTRL;")
             outFile.close()
+
+        if (self.yml2hdl > 0):
+            with open(def_pkg_name, 'a') as outfile:
+                outfile.write("\nend package;\n");
+
+
         return
 
     @staticmethod
