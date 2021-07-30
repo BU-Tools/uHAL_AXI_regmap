@@ -53,7 +53,7 @@ class tree(object):
         # read the root node
         self.root = node.node(root, baseAddress=0, tree=self)
 
-    def generate_yaml (self, baseName, current_node, members, description):
+    def generate_yaml(self, baseName, current_node, members, description):
         """ Generate and print a VHDL record into yml2hdl v{x} format"""
 
         outFileName = self.outFileName.replace("PKG.vhd", "PKG.yml")
@@ -62,13 +62,22 @@ class tree(object):
 
             outFile.write("- " + baseName+":\n")
             sorted_members = sorted(members.items(),
-                                    key=lambda item: (current_node.getChild(item[0]).address<<32) + current_node.getChild(item[0]).mask)
+                                    key=lambda item:
+                                    (current_node.getChild(item[0]).address << 32) +
+                                    current_node.getChild(item[0]).mask)
 
             for memberName, member in sorted_members:
 
                 outFile.write("  - " + memberName + " : [ type: ")
-                member_type = re.sub("\(.*\\)", "", member.replace("std_logic_vector", "logic").replace("std_logic", "logic"))
+
+                # rename types from VHDL to yml2hdl
+                # (following system verilog everything is a logic type in yml2hdl)
+                member_type = member.replace("std_logic_vector", "logic").replace("std_logic", "logic")
+                member_type = re.sub("\(.*\\)", "", member_type)  # eliminiate the vector size here
+
                 outFile.write(member_type)
+
+                # handle std_logic_vectors.. have to extract the vector size
                 if ("downto" in member):
                     (high, low) = re.search(r'\((.*?)\)', member).group(1).replace("downto", " ").split()
                     length = int(high)-int(low)+1
@@ -94,36 +103,54 @@ class tree(object):
             outFile.write("  type " + baseName + " is record\n")
             maxNameLength = 25
             maxTypeLength = 12
-            sorted_members = sorted(members.items(), key=lambda item: (current_node.getChild(
-                item[0]).address << 32) + current_node.getChild(item[0]).mask)
+
+            sorted_members = sorted(members.items(),
+                                    key=lambda item:
+                                    (current_node.getChild(item[0]).address << 32)
+                                    + current_node.getChild(item[0]).mask)
+
             for memberName, member in sorted_members:
+
                 if len(memberName) > maxNameLength:
                     maxNameLength = len(memberName)
+
                 if len(member) > maxTypeLength:
                     maxTypeLength = len(member)
-                outFile.write(
-                    "    " + memberName + "".ljust(maxNameLength-len(memberName), ' ') + "  :")
+
+                padding = " "*(maxNameLength-len(memberName))
+                outFile.write("    %s%s  :" % (memberName, padding))
                 outFile.write((member+';').ljust(maxTypeLength+1, ' '))
+
                 if len(description[memberName]) > 0:
                     outFile.write("  -- " + description[memberName])
+
                 outFile.write('\n')
+
             outFile.write("  end record " + baseName + ";\n")
+
             if current_node.isArray():
-                array_index_string = " is array(" + str(min(current_node.entries.keys(
-                ))) + " to " + str(max(current_node.entries.keys()))+") of "
-                outFile.write("  type " + baseName + "_ARRAY" +
-                              array_index_string + baseName + ";")
+
+                array_index_string = " is array(%d to %d) of " \
+                    % (min(current_node.entries.keys()), max(current_node.entries.keys()))
+
+                outFile.write("  type " + baseName + "_ARRAY" + array_index_string + baseName + ";")
+
             outFile.write("\n\n")
             outFile.close()
         # TODO: return value here?
         return
 
     def generateDefaultRecord(self, baseName, defaults, outFileName, ctrl_file_lib="ctrl_lib"):
+
         with open(outFileName, 'a') as outfile:
+
             outfile.write("  constant DEFAULT_" + baseName +
                           " : " + baseName + " := (\n")
+
             padding_size = 27 + (2 * len(baseName))
+
             firstLine = True
+
             for keys, values in defaults.items():
                 # if the value is in the format of 0x1, translate it into x'1'
                 if '0x' in values:
@@ -132,13 +159,18 @@ class tree(object):
                         values = "'1'"
                     else:
                         values = 'x"'+values+'"'
+
                 if firstLine:
                     firstLine = False
                 else:
                     outfile.write(",\n")
+
                 outfile.write(" ".ljust(padding_size, ' ')+keys+" => "+values)
+
             outfile.write("\n ".ljust(padding_size, ' ')+");\n")
+
             outfile.close()
+
         return "DEFAULT_"+baseName
 
     def buildCustomBRAM_MOSI(self, name, addr_size, data_size):
@@ -149,10 +181,8 @@ class tree(object):
             outFile.write("    clk       : std_logic;\n")
             outFile.write("    enable    : std_logic;\n")
             outFile.write("    wr_enable : std_logic;\n")
-            outFile.write("    address   : std_logic_vector(" +
-                          str(addr_size)+"-1 downto 0);\n")
-            outFile.write("    wr_data   : std_logic_vector(" +
-                          str(data_size)+"-1 downto 0);\n")
+            outFile.write("    address   : std_logic_vector(%d-1 downto 0);\n" % addr_size)
+            outFile.write("    wr_data   : std_logic_vector(%d-1 downto 0);\n" % data_size)
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
         return fullName
@@ -162,7 +192,7 @@ class tree(object):
         with open(self.outFileName, 'a') as outFile:
             # Generate and print a VHDL record
             outFile.write("  type " + fullName + " is record\n")
-            outFile.write("    rd_data         : std_logic_vector("+str(data_size)+"-1 downto 0);\n")
+            outFile.write("    rd_data         : std_logic_vector(%d-1 downto 0);\n" % data_size)
             outFile.write("    rd_data_valid   : std_logic;\n")
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
@@ -185,6 +215,7 @@ class tree(object):
         return defaultName
 
     def traversePkg(self, current_node=None, padding='\t'):
+
         if not current_node:
             current_node = self.root
         #print(padding+current_node.id+': ['+str([i.id for i in current_node.children]))
@@ -193,7 +224,9 @@ class tree(object):
         package_ctrl_entry_defaults = OrderedDict()
         package_description = OrderedDict()
         package_addr_order = OrderedDict()
+
         for child in current_node.children:
+
             if len(child.children) != 0:
                 child_records = self.traversePkg(child, padding+'\t')
                 package_description[child.id] = ""
@@ -220,29 +253,35 @@ class tree(object):
                     bramName = child.getPath(
                         expandArray=False).replace('.', '_')
                     # create the MOSI package as a control package and add it to the list
-                    package_ctrl_entries[child.id] = self.buildCustomBRAM_MOSI(bramName,
-                                                                               child.addrWidth,
-                                                                               child.dataWidth)
-                    # create the MISO package as a monitor package and add it to the list
-                    package_mon_entries[child.id] = self.buildCustomBRAM_MISO(bramName,
-                                                                              child.addrWidth,
-                                                                              child.dataWidth)
+                    package_ctrl_entries[child.id] = \
+                        self.buildCustomBRAM_MOSI(bramName,
+                                                  child.addrWidth,
+                                                  child.dataWidth)
 
-                    package_ctrl_entry_defaults[child.id] = self.buildDefaultBRAM_MOSI(bramName,
-                                                                                       child.addrWidth,
-                                                                                       child.dataWidth)
+                    # create the MISO package as a monitor package and add it to the list
+                    package_mon_entries[child.id] = \
+                        self.buildCustomBRAM_MISO(bramName,
+                                                  child.addrWidth,
+                                                  child.dataWidth)
+
+                    package_ctrl_entry_defaults[child.id] = \
+                        self.buildDefaultBRAM_MOSI(bramName,
+                                                   child.addrWidth,
+                                                   child.dataWidth)
+
                     self.bramCount = self.bramCount + 1
+
                     if self.bramCount == 1:
-                        self.bramAddrs = str(
-                            self.bramCount-1)+" => x\""+hex(child.getLocalAddress())[2:].zfill(8)+"\""
-                        self.bramRanges = str(
-                            self.bramCount-1)+" => "+str(child.addrWidth)
+                        self.bramAddrs = "%d => x\"%08X\"" % \
+                            (self.bramCount-1, child.getLocalAddress())
+                        self.bramRanges = "%d => %d" % \
+                            (self.bramCount-1, child.addrWidth)
+
                     else:
-                        self.bramAddrs = self.bramAddrs + "\n,\t\t\t" + \
-                            str(self.bramCount-1)+" => x\"" + \
-                            hex(child.getLocalAddress())[2:].zfill(8)+"\""
-                        self.bramRanges = self.bramRanges+"\n,\t\t\t" + \
-                            str(self.bramCount-1)+" => "+str(child.addrWidth)
+                        self.bramAddrs = "%s\n,\t\t\t%d => x\"%08X\"" % \
+                            (self.bramAddrs, self.bramCount-1, child.getLocalAddress())
+                        self.bramRanges = "%s\n,\t\t\t%d => %d" % \
+                            (self.bramRanges, self.bramCount-1, child.addrWidth)
 
                     bram_end = child.getLocalAddress() + 2**child.addrWidth
                     if bram_end > self.bram_max_addr:
@@ -273,7 +312,9 @@ class tree(object):
                     self.bram_MISO_map = self.bram_MISO_map + \
                         "  BRAM_MISO("+str(self.bramCount-1)+").rd_data_valid <= Mon." + \
                         bramTableName+".rd_data_valid;\n\n"
+
                 else:
+
                     bitCount = bin(child.mask)[2:].count('1')
                     package_entries = ""
                     if bitCount == 1:
@@ -284,28 +325,42 @@ class tree(object):
 
                     package_description[child.id] = child.description
                     bits = child.getBitRange()
+
+                    # read only
                     if child.permission == 'r':
                         package_mon_entries[child.id] = package_entries
+
+                    # read write
                     elif child.permission == 'rw':
                         package_ctrl_entries[child.id] = package_entries
+
                         # store data for default signal
                         if "default" in child.parameters:
                             intValue = int(child.parameters["default"], 0)
                             if bits.find("downto") > 0:
                                 if bitCount % 4 == 0:
-                                    package_ctrl_entry_defaults[child.id] = "x\"" + hex(
-                                        intValue)[2:].zfill(int(bitCount/4)) + "\""
+                                    # hex default
+                                    package_ctrl_entry_defaults[child.id] = \
+                                        "x\"{val:0{width}x}\"".format(val=intValue, width=int(bitCount/4))
                                 else:
-                                    package_ctrl_entry_defaults[child.id] = "\"" + bin(
-                                        intValue)[2:].zfill(bitCount) + "\""
+                                    # binary default
+                                    package_ctrl_entry_defaults[child.id] = \
+                                        "\"{val:0{width}b}\"".format (val=intValue, width=int(bitCount))
                             else:
-                                package_ctrl_entry_defaults[child.id] = "'"+str(
-                                    intValue)+"'"
+                                package_ctrl_entry_defaults[child.id] = \
+                                    "'%d'" % (intValue)
+
+                        # no explicit default, default to 0 for std_logic_vectors
                         elif bits.find("downto") > 0:
                             package_ctrl_entry_defaults[child.id] = "(others => '0')"
+
+                        # no explicit default, default to '0' for std_logic
                         else:
                             package_ctrl_entry_defaults[child.id] = "'0'"
+
+                    # write only (action registers)
                     elif child.permission == 'w':
+
                         # store data for default signal
                         if "default" in child.parameters:
                             print("Action register with default value!\n")
@@ -314,16 +369,24 @@ class tree(object):
                         else:
                             package_ctrl_entry_defaults[child.id] = "'0'"
                         package_ctrl_entries[child.id] = package_entries
+
         ret = {}
+
         if package_mon_entries:
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_MON_t'
             # print(padding+baseName)
 
             if self.yml2hdl == 0:
-                ret['mon'] = self.generateRecord(baseName, current_node, package_mon_entries, package_description)
+                ret['mon'] = self.generateRecord(baseName,
+                                                 current_node,
+                                                 package_mon_entries,
+                                                 package_description)
+
             if self.yml2hdl == 1 or self.yml2hdl == 2:
-                self.generate_yaml(baseName, current_node, package_mon_entries,
+                self.generate_yaml(baseName,
+                                   current_node,
+                                   package_mon_entries,
                                    package_description)
 
         if package_ctrl_entries:
@@ -332,14 +395,19 @@ class tree(object):
 
             # print(padding+baseName)
 
-            ret['ctrl'] = self.generateRecord(baseName, current_node, package_ctrl_entries, package_description)
+            ret['ctrl'] = self.generateRecord(baseName,
+                                              current_node,
+                                              package_ctrl_entries,
+                                              package_description)
 
             def_pkg_name = self.outFileName
 
             if self.yml2hdl > 0:
                 def_pkg_name = def_pkg_name.replace("PKG.vhd", "PKG_DEF.vhd")
 
-            ret["ctrl_default"] = self.generateDefaultRecord(baseName, package_ctrl_entry_defaults, def_pkg_name)
+            ret["ctrl_default"] = self.generateDefaultRecord(baseName,
+                                                             package_ctrl_entry_defaults,
+                                                             def_pkg_name)
 
             if self.yml2hdl > 0:
                 self.generate_yaml(baseName, current_node, package_ctrl_entries, package_description)
@@ -359,6 +427,7 @@ class tree(object):
         # write the package header
         if not self.outFileName:
             self.outFileName = outFileBase + "_PKG.vhd"
+
         with open(self.outFileName, 'w') as outFile:
             outFile.write("--This file was auto-generated.\n")
             outFile.write("--Modifications might be lost.\n")
@@ -401,8 +470,7 @@ class tree(object):
 
         if (self.yml2hdl > 0):
             with open(def_pkg_name, 'a') as outfile:
-                outfile.write("\nend package;\n");
-
+                outfile.write("\nend package;\n")
 
         return
 
@@ -425,6 +493,7 @@ class tree(object):
         output = StringIO()
         newAssignmentPos = 0
         newAssignmentLength = 0
+
         for addr in operations:
             # find the position of the "<=" in each line so we can align them
             # find the max length of assignment names so we can align to that as well
@@ -435,21 +504,24 @@ class tree(object):
                 assignmentLength = line[assignmentPos:].find(";")
                 if assignmentLength > newAssignmentLength:
                     newAssignmentLength = assignmentLength
+
         for addr in operations:
+
             output.write("        when "+str(addr)+" => --"+hex(addr)+"\n")
+
             for line in sorted(operations[addr].split('\n'), key=tree.sortByBit):
+
                 if line.find("<=") > 0:
                     preAssignment = line[0:line.find("<=")-1]
                     line = line[line.find("<=")+2:]
                     assignment = line[0:line.find(";")]
                     line = line[line.find(";")+1:]
-                    output.write("          " +
-                                 preAssignment.ljust(newAssignmentPos) +
-                                 " <= " +
-                                 str(assignment+";").ljust(newAssignmentLength) +
-                                 "    " +
-                                 line +
-                                 "\n")
+
+                    output.write("          %s <= %s    %s\n"
+                                 % (preAssignment.ljust(newAssignmentPos),
+                                    str(assignment+";").ljust(newAssignmentLength),
+                                    line))
+
         return output.getvalue()
 
     def generate_r_ops_output(self):
@@ -501,8 +573,10 @@ class tree(object):
         return output.getvalue()
 
     def traverseRegMap(self, current_node=None, padding='\t'):
+
         if not current_node:
             current_node = self.root
+
         # expand the array entries
         expanded_child_list = []
         for child in current_node.children:
@@ -511,6 +585,7 @@ class tree(object):
                     expanded_child_list.append(entry)
             else:
                 expanded_child_list.append(child)
+
         # loop over expanded list
         for child in expanded_child_list:
             if len(child.children) != 0:
@@ -553,7 +628,7 @@ class tree(object):
                     # read/write
                     self.readwrite_ops += "Ctrl.%s <= reg_data(%2d)(%s);\n" % \
                         (child.getPath(includeRoot=False, expandArray=True),
-                         child.getLocalAddress(),bits)
+                         child.getLocalAddress(), bits)
 
                     # default
                     self.default_ops += "reg_data(%2d)(%s) <= CTRL_t.%s;\n" % \
