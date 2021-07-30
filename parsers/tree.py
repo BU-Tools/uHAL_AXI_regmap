@@ -90,7 +90,6 @@ class tree(object):
 
             if current_node.isArray():
                 array_index_string = "array: " + str(1 + max(current_node.entries.keys()))+", type: "
-                # array_index_string = "array: (" + str(min(current_node.entries.keys())) + " to " + str(max(current_node.entries.keys()))+"), type : "
                 outFile.write("\n- " + baseName + "_ARRAY: [" + array_index_string + baseName + "]")
 
             outFile.write("\n\n")
@@ -223,7 +222,6 @@ class tree(object):
         package_ctrl_entries = OrderedDict()
         package_ctrl_entry_defaults = OrderedDict()
         package_description = OrderedDict()
-        package_addr_order = OrderedDict()
 
         for child in current_node.children:
 
@@ -286,7 +284,7 @@ class tree(object):
                     bram_end = child.getLocalAddress() + 2**child.addrWidth
                     if bram_end > self.bram_max_addr:
                         self.bram_max_addr = bram_end
-#                    bramTableName=child.getPath(expandArray=False)[(current_node.getPath(expandArray=False)).find("."):]
+
                     bramTableName = child.getPath(expandArray=False)
                     bramTableName = bramTableName[bramTableName.find(".")+1:]
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
