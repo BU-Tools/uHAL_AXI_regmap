@@ -715,9 +715,14 @@ class tree(object):
             RegMapOutput = Template(RegMapOutput)
             template_input_file.close()
 
+        additionalLibraries = ""
+        if (self.yml2hdl > 0):
+            additionalLibraries = "use work.%s_Ctrl_DEF.all;" % outFileBase
+
         # Substitute keywords in the template
         substitute_mapping = {
             "baseName": outFileBase,
+            "additionalLibraries": additionalLibraries,
             "regMapSize": regMapSize,
             "regAddrRange": regAddrRange,
             "r_ops_output": self.generate_r_ops_output(),

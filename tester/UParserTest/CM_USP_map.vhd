@@ -9,6 +9,7 @@ use work.AXIRegPkg.all;
 use work.types.all;
 
 use work.CM_USP_Ctrl.all;
+
 entity CM_USP_map is
   port (
     clk_axi          : in  std_logic;

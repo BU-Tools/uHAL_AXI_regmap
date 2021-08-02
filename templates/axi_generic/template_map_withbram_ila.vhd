@@ -9,6 +9,7 @@ use work.AXIRegPkg.all;
 use work.types.all;
 {% if bram_count %}use work.BRAMPortPkg.all;{% endif %}
 use work.{{baseName}}_Ctrl.all;
+{{additionalLibraries}}
 entity {{baseName}}_map is
   port (
     clk_axi          : in  std_logic;
