@@ -20,6 +20,8 @@ entity CM_USP_wb_map is
     );
 end entity CM_USP_wb_map;
 architecture behavioral of CM_USP_wb_map is
+  signal strobe_r : std_logic := '0';
+  signal strobe_pulse : std_logic := '0';
   type slv32_array_t  is array (integer range <>) of std_logic_vector( 31 downto 0);
   signal localRdData : std_logic_vector (31 downto 0) := (others => '0');
   signal localWrData : std_logic_vector (31 downto 0) := (others => '0');
@@ -29,6 +31,14 @@ begin  -- architecture behavioral
 
   wb_rdata <= localRdData;
   localWrData <= wb_wdata;
+
+  strobe_pulse <= '1' when (wb_strobe='1' and strobe_r='0') else '0';
+  process (clk) is
+  begin
+    if (rising_edge(clk)) then
+      strobe_r <= wb_strobe;
+    end if;
+  end process;
 
   -- acknowledge
   process (clk) is
@@ -47,6 +57,7 @@ begin  -- architecture behavioral
   begin  -- process reads
     if rising_edge(clk) then  -- rising clock edge
       localRdData <= x"00000000";
+      wb_err <= '0';
       if wb_strobe='1' then
         case to_integer(unsigned(wb_addr(8 downto 0))) is
           when 0 => --0x0
@@ -435,7 +446,8 @@ begin  -- architecture behavioral
           localRdData(31 downto  0)  <=  reg_data(346)(31 downto  0);                         --Count to wait for in state machine before timing out (50Mhz clk)
 
         when others =>
-          localRdData <= x"00000000";
+          localRdData <= x"DEADDEAD";
+          --wb_err <= '1';
         end case;
       end if;
     end if;
@@ -564,8 +576,16 @@ begin  -- architecture behavioral
   begin  -- process reg_writes
     if (rising_edge(clk)) then  -- rising clock edge
 
+      -- action resets
+      Ctrl.CM(1).C2C(1).CNT.RESET_COUNTERS <= '0';
+      Ctrl.CM(1).C2C(2).CNT.RESET_COUNTERS <= '0';
+      Ctrl.CM(2).C2C(1).CNT.RESET_COUNTERS <= '0';
+      Ctrl.CM(2).C2C(2).CNT.RESET_COUNTERS <= '0';
+      
+
+
       -- Write on strobe=write=1
-      if wb_strobe='1' and wb_write = '1' then
+      if strobe_pulse='1' and wb_write = '1' then
         case to_integer(unsigned(wb_addr(8 downto 0))) is
         when 0 => --0x0
           reg_data( 0)( 0)                      <=  localWrData( 0);                --Tell CM uC to power-up
@@ -859,18 +879,6 @@ begin  -- architecture behavioral
       reg_data(336)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.COUNT_16X_BAUD;
       reg_data(340)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.ERRORS.RESET;
       reg_data(346)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.SM_TIMEOUT;
-
-      Ctrl.CM(1).C2C(1).CNT.RESET_COUNTERS <= '0';
-      Ctrl.CM(1).C2C(2).CNT.RESET_COUNTERS <= '0';
-      Ctrl.CM(2).C2C(1).CNT.RESET_COUNTERS <= '0';
-      Ctrl.CM(2).C2C(2).CNT.RESET_COUNTERS <= '0';
-      
-
-      Ctrl.CM(1).C2C(1).CNT.RESET_COUNTERS <= '0';
-      Ctrl.CM(1).C2C(2).CNT.RESET_COUNTERS <= '0';
-      Ctrl.CM(2).C2C(1).CNT.RESET_COUNTERS <= '0';
-      Ctrl.CM(2).C2C(2).CNT.RESET_COUNTERS <= '0';
-      
 
       end if; -- reset
     end if; -- clk

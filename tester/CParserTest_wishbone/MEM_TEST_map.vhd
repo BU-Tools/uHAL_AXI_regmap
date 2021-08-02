@@ -20,6 +20,8 @@ entity MEM_TEST_wb_map is
     );
 end entity MEM_TEST_wb_map;
 architecture behavioral of MEM_TEST_wb_map is
+  signal strobe_r : std_logic := '0';
+  signal strobe_pulse : std_logic := '0';
   type slv32_array_t  is array (integer range <>) of std_logic_vector( 31 downto 0);
   signal localRdData : std_logic_vector (31 downto 0) := (others => '0');
   signal localWrData : std_logic_vector (31 downto 0) := (others => '0');
@@ -29,6 +31,14 @@ begin  -- architecture behavioral
 
   wb_rdata <= localRdData;
   localWrData <= wb_wdata;
+
+  strobe_pulse <= '1' when (wb_strobe='1' and strobe_r='0') else '0';
+  process (clk) is
+  begin
+    if (rising_edge(clk)) then
+      strobe_r <= wb_strobe;
+    end if;
+  end process;
 
   -- acknowledge
   process (clk) is
@@ -47,6 +57,7 @@ begin  -- architecture behavioral
   begin  -- process reads
     if rising_edge(clk) then  -- rising clock edge
       localRdData <= x"00000000";
+      wb_err <= '0';
       if wb_strobe='1' then
         case to_integer(unsigned(wb_addr(10 downto 0))) is
           when 0 => --0x0
@@ -93,7 +104,8 @@ begin  -- architecture behavioral
           localRdData(31 downto  0)  <=  reg_data(768)(31 downto  0);      --
 
         when others =>
-          localRdData <= x"00000000";
+          localRdData <= x"DEADDEAD";
+          --wb_err <= '1';
         end case;
       end if;
     end if;
@@ -110,8 +122,12 @@ begin  -- architecture behavioral
   begin  -- process reg_writes
     if (rising_edge(clk)) then  -- rising clock edge
 
+      -- action resets
+      
+
+
       -- Write on strobe=write=1
-      if wb_strobe='1' and wb_write = '1' then
+      if strobe_pulse='1' and wb_write = '1' then
         case to_integer(unsigned(wb_addr(10 downto 0))) is
         when 32 => --0x20
           reg_data(32)(31 downto  0)   <=  localWrData(31 downto  0);      --
@@ -127,10 +143,6 @@ begin  -- architecture behavioral
       if reset = '1' then
       reg_data(32)(31 downto  0)  <= DEFAULT_MEM_TEST_CTRL_t.THING;
       reg_data(768)(31 downto  0)  <= DEFAULT_MEM_TEST_CTRL_t.LEVEL_TEST.THING;
-
-      
-
-      
 
       end if; -- reset
     end if; -- clk
