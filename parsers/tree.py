@@ -482,8 +482,8 @@ class tree(object):
                 outfile.write("library %s;\n" % ctrl_file_lib)
                 outfile.write("use %s.%s_CTRL.all;\n" % (ctrl_file_lib, outFileBase))
 
-                outfile.write("library shared_lib;\n")
-                outfile.write("use shared_lib.common_ieee.all;\n")
+                # outfile.write("library shared_lib;\n")
+                # outfile.write("use shared_lib.common_ieee.all;\n")
 
                 outfile.write("\n\npackage "+outFileBase+"_CTRL_DEF is\n")
 

@@ -4,8 +4,6 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 library ctrl_lib;
 use ctrl_lib.CM_USP_CTRL.all;
-library shared_lib;
-use shared_lib.common_ieee.all;
 
 
 package CM_USP_CTRL_DEF is
