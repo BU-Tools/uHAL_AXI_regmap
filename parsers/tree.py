@@ -3,6 +3,7 @@ import math
 import os
 import sys
 import re
+import datetime
 
 from jinja2 import Template
 from collections import OrderedDict
@@ -34,8 +35,6 @@ class tree(object):
         # 2=yml2hdl v2
         # etc...
         #
-        # Actually only 1 version is supported right now and I have no idea what
-        # it is
 
         self.yml2hdl = yml2hdl
 
@@ -446,7 +445,30 @@ class tree(object):
 
             def_yaml_name = self.outFileName.replace("PKG.vhd", "PKG.yml")
             with open(def_yaml_name, 'w') as outFile:
+                outFile.write("# yml2hdl v%d\n" % self.yml2hdl)
                 outFile.write("# This file was auto-generated.\n")
+                outFile.write("# Modifications might be lost.\n")
+                if (self.yml2hdl == 1):
+                    outFile.write("__config__:\n")
+                    outFile.write("    basic_convert_functions : off\n")
+                    outFile.write("    packages:\n")
+                    outFile.write("    shared_lib:\n")
+                    outFile.write("        - common_ieee_pkg\n")
+                    outFile.write("\n")
+                    outFile.write("HDL_Types:\n")
+                    outFile.write("\n")
+                if (self.yml2hdl == 2):
+                    outFile.write("config:\n")
+                    outFile.write("  basic_convert_functions : off\n")
+                    outFile.write("  packages:\n")
+                    outFile.write("    - ieee: [std_logic_1164, numeric_std, math_real]\n")
+                    outFile.write("    - shared_lib: [common_ieee]\n")
+                    outFile.write("\n")
+                    outFile.write("hdl:\n")
+                    outFile.write("\n")
+
+                outFile.close()
+
 
             def_pkg_name = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
             with open(def_pkg_name, 'w') as outfile:

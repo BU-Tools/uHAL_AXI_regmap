@@ -182,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
     parser.add_argument("--verbose","-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
     parser.add_argument("--debug","-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
-    parser.add_argument("--yaml","-y",type=str2bool,help="Enable YAML output",required=False,default=False)
+    parser.add_argument("--yaml","-y",type=int,help="Enable YAML output",required=False,default=0)
     parser.add_argument("--mapTemplate","-m",help="Template to use for decoder map file",required=False,default="templates/axi_generic/template_map.vhd")
     parser.add_argument("--pkgTemplate","-p",help="Template to use for PKG file (not supported yet)",required=False)
     parser.add_argument("--outpath","-o",help="output path to use",required=False,default="autogen")

@@ -1,4 +1,14 @@
+# yml2hdl v1
 # This file was auto-generated.
+# Modifications might be lost.
+__config__:
+    basic_convert_functions : off
+    packages:
+    shared_lib:
+        - common_ieee_pkg
+
+HDL_Types:
+
 - CM_USP_CM_CTRL_MON_t:
   - PWR_GOOD : [ type: logic ]
   - STATE : [ type: logic, length: 4 ]
