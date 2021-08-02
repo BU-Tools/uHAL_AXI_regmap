@@ -50,10 +50,14 @@ class UnitTest(unittest.TestCase):
                                                     os.path.abspath(xml_path),
                                                     test_xml_name)
 
-                regmap_template = "../templates/axi_generic/template_map_withbram.vhd"
+                wishbone = "../templates/wishbone/template_map.vhd"
+                axi = "../templates/axi_generic/template_map_withbram.vhd"
 
-                tests = [{"path": "CParserTest", "parser": "simple"},
-                        {"path": "UParserTest", "parser": "uhal"}]
+                tests = [{"path": "CParserTest",          "parser": "simple", "template": axi},
+                         {"path": "UParserTest",          "parser": "uhal",   "template": axi},
+                         {"path": "CParserTest_wishbone", "parser": "simple", "template": wishbone},
+                         {"path": "UParserTest_wishbone", "parser": "simple", "template": wishbone}
+                         ]
 
                 # Generate the VHDL Outputs
                 for test in tests:
@@ -64,13 +68,14 @@ class UnitTest(unittest.TestCase):
 
                         parse_xml(test_xml=test_xml_name, HDLPath=test["path"],
                                 parser=test["parser"],
-                                regMapTemplate=regmap_template,
+                                regMapTemplate=test["template"],
                                 yml2hdl=yml2hdl)
             finally:
                 os.remove(test_xml_name)
 
         # Check that they are equal
         self.assert_compare_dir(tests[0]["path"], tests[1]["path"])
+        self.assert_compare_dir(tests[2]["path"], tests[3]["path"])
 
         # Check that there is no Git diff
         for test in tests:
