@@ -49,7 +49,11 @@ HDL_Types:
   - GIT_HASH_3 : [ type: logic, length: 32 ]
   - GIT_HASH_4 : [ type: logic, length: 32 ]
   - GIT_HASH_5 : [ type: logic, length: 32 ]
+  - BUILD_DATE : [ type: MEM_TEST_BUILD_DATE_MON_t ]
+  - BUILD_TIME : [ type: MEM_TEST_BUILD_TIME_MON_t ]
+  - FPGA : [ type: MEM_TEST_FPGA_MON_t ]
   - MEM1 : [ type: MEM_TEST_MEM1_MISO_t ]
+  - LEVEL_TEST : [ type: MEM_TEST_LEVEL_TEST_MON_t ]
 
 
 - MEM_TEST_CTRL_t:

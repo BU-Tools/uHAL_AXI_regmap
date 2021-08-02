@@ -82,6 +82,8 @@ HDL_Types:
   - QPLL_LOCK : [ type: logic ]
   - CPLL_LOCK : [ type: logic ]
   - EYESCAN_DATA_ERROR : [ type: logic ]
+  - RX : [ type: CM_USP_CM_C2C_LINK_DEBUG_RX_MON_t ]
+  - TX : [ type: CM_USP_CM_C2C_LINK_DEBUG_TX_MON_t ]
 
 
 - CM_USP_CM_C2C_LINK_DEBUG_CTRL_t:
@@ -108,6 +110,13 @@ HDL_Types:
 - CM_USP_CM_C2C_CNT_CTRL_t:
   - RESET_COUNTERS : [ type: logic ]
 
+
+- CM_USP_CM_C2C_MON_t:
+  - STATUS : [ type: CM_USP_CM_C2C_STATUS_MON_t ]
+  - LINK_DEBUG : [ type: CM_USP_CM_C2C_LINK_DEBUG_MON_t ]
+  - CNT : [ type: CM_USP_CM_C2C_CNT_MON_t ]
+
+- CM_USP_CM_C2C_MON_t_ARRAY: [array: 3, type: CM_USP_CM_C2C_MON_t]
 
 - CM_USP_CM_C2C_CTRL_t:
   - ENABLE_PHY_CTRL : [ type: logic ]
@@ -149,6 +158,9 @@ HDL_Types:
   - ACTIVE : [ type: logic ]
   - HISTORY_VALID : [ type: logic, length: 4 ]
   - HISTORY : [ type: logic, length: 32 ]
+  - BAD_TRANS : [ type: CM_USP_CM_MONITOR_BAD_TRANS_MON_t ]
+  - LAST_TRANS : [ type: CM_USP_CM_MONITOR_LAST_TRANS_MON_t ]
+  - ERRORS : [ type: CM_USP_CM_MONITOR_ERRORS_MON_t ]
   - UART_BYTES : [ type: logic, length: 32 ]
 
 
@@ -158,12 +170,23 @@ HDL_Types:
   - SM_TIMEOUT : [ type: logic, length: 32 ]
 
 
+- CM_USP_CM_MON_t:
+  - CTRL : [ type: CM_USP_CM_CTRL_MON_t ]
+  - C2C : [ type: CM_USP_CM_C2C_MON_t_ARRAY ]
+  - MONITOR : [ type: CM_USP_CM_MONITOR_MON_t ]
+
+- CM_USP_CM_MON_t_ARRAY: [array: 3, type: CM_USP_CM_MON_t]
+
 - CM_USP_CM_CTRL_t:
   - CTRL : [ type: CM_USP_CM_CTRL_CTRL_t ]
   - C2C : [ type: CM_USP_CM_C2C_CTRL_t_ARRAY ]
   - MONITOR : [ type: CM_USP_CM_MONITOR_CTRL_t ]
 
 - CM_USP_CM_CTRL_t_ARRAY: [array: 3, type: CM_USP_CM_CTRL_t]
+
+- CM_USP_MON_t:
+  - CM : [ type: CM_USP_CM_MON_t_ARRAY ]
+
 
 - CM_USP_CTRL_t:
   - CM : [ type: CM_USP_CM_CTRL_t_ARRAY ]

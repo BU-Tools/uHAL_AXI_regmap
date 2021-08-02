@@ -228,6 +228,7 @@ class tree(object):
                 child_records = self.traversePkg(child, padding+'\t')
                 package_description[child.id] = ""
                 array_postfix = ["", "_ARRAY"][child.isArray()]
+
                 # make the records for package entries
                 if 'mon' in child_records:
                     package_mon_entries[child.id] = child.getPath(
@@ -370,44 +371,44 @@ class tree(object):
         ret = {}
 
         if package_mon_entries:
+
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_MON_t'
             # print(padding+baseName)
 
             if self.yml2hdl == 0:
-                ret['mon'] = self.generateRecord(baseName,
-                                                 current_node,
-                                                 package_mon_entries,
-                                                 package_description)
-
+                func = self.generateRecord
             if self.yml2hdl == 1 or self.yml2hdl == 2:
-                self.generate_yaml(baseName,
-                                   current_node,
-                                   package_mon_entries,
-                                   package_description)
+                func = self.generate_yaml
+
+            ret['mon'] = func(baseName,
+                              current_node,
+                              package_mon_entries,
+                              package_description)
 
         if package_ctrl_entries:
+
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_CTRL_t'
 
-            # print(padding+baseName)
+            if self.yml2hdl == 0:
+                func = self.generateRecord
+            if self.yml2hdl == 1 or self.yml2hdl == 2:
+                func = self.generate_yaml
 
-            ret['ctrl'] = self.generateRecord(baseName,
-                                              current_node,
-                                              package_ctrl_entries,
-                                              package_description)
+            ret['ctrl'] = func(baseName,
+                               current_node,
+                               package_ctrl_entries,
+                               package_description)
 
             def_pkg_name = self.outFileName
-
             if self.yml2hdl > 0:
                 def_pkg_name = def_pkg_name.replace("PKG.vhd", "PKG_DEF.vhd")
 
-            ret["ctrl_default"] = self.generateDefaultRecord(baseName,
-                                                             package_ctrl_entry_defaults,
-                                                             def_pkg_name)
-
-            if self.yml2hdl > 0:
-                self.generate_yaml(baseName, current_node, package_ctrl_entries, package_description)
+            ret["ctrl_default"] = \
+                self.generateDefaultRecord(baseName,
+                                           package_ctrl_entry_defaults,
+                                           def_pkg_name)
 
         return ret
 
@@ -421,28 +422,28 @@ class tree(object):
         outFileBase = self.root.id
         self.outFileName = outFileName
 
-        # write the package header
         if not self.outFileName:
             self.outFileName = outFileBase + "_PKG.vhd"
 
-        with open(self.outFileName, 'w') as outFile:
-            outFile.write("--This file was auto-generated.\n")
-            outFile.write("--Modifications might be lost.\n")
-            outFile.write("library IEEE;\n")
-            outFile.write("use IEEE.std_logic_1164.all;\n")
+        # write the package header
+        if (self.yml2hdl == 0):
 
-            # yml2hdl libraries
-            if (self.yml2hdl > 0):
-                outFile.write("library shared_lib;\n")
-                outFile.write("use shared_lib.common_ieee.all;\n")
-            outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
-            outFile.close()
+            with open(self.outFileName, 'w') as outFile:
+                outFile.write("--This file was auto-generated.\n")
+                outFile.write("--Modifications might be lost.\n")
+                outFile.write("library IEEE;\n")
+                outFile.write("use IEEE.std_logic_1164.all;\n")
 
-        # write the defaults package header
-
+                # yml2hdl libraries
+                if (self.yml2hdl > 0):
+                    outFile.write("library shared_lib;\n")
+                    outFile.write("use shared_lib.common_ieee.all;\n")
+                outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
+                outFile.close()
 
         if (self.yml2hdl > 0):
 
+            # write the yaml output header
             def_yaml_name = self.outFileName.replace("PKG.vhd", "PKG.yml")
             with open(def_yaml_name, 'w') as outFile:
                 outFile.write("# yml2hdl v%d\n" % self.yml2hdl)
@@ -470,6 +471,7 @@ class tree(object):
                 outFile.close()
 
 
+            # write the defaults package header
             def_pkg_name = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
             with open(def_pkg_name, 'w') as outfile:
                 outfile.write("--This file was auto-generated.\n")
@@ -478,24 +480,27 @@ class tree(object):
                 outfile.write("use IEEE.std_logic_1164.all;\n")
 
                 outfile.write("library %s;\n" % ctrl_file_lib)
-                outfile.write("use %s.%s.all;\n" % (ctrl_file_lib, outFileBase))
+                outfile.write("use %s.%s_CTRL.all;\n" % (ctrl_file_lib, outFileBase))
 
                 outfile.write("library shared_lib;\n")
                 outfile.write("use shared_lib.common_ieee.all;\n")
 
-                outfile.write("\n\npackage "+outFileBase+"_DEF is\n")
+                outfile.write("\n\npackage "+outFileBase+"_CTRL_DEF is\n")
 
         # write the package payload
         self.traversePkg()
 
         # write the package trailer
-        with open(self.outFileName, 'a') as outFile:
-            outFile.write("\n\nend package "+outFileBase+"_CTRL;")
-            outFile.close()
-
+        if (self.yml2hdl == 0):
+            trailer = "\n\nend package "+outFileBase+"_CTRL;"
+            pkg = self.outFileName
         if (self.yml2hdl > 0):
-            with open(def_pkg_name, 'a') as outfile:
-                outfile.write("\nend package;\n")
+            trailer = "\nend package "+outFileBase+"_CTRL_DEF;\n"
+            pkg = def_pkg_name
+
+        with open(pkg, 'a') as outFile:
+            outFile.write(trailer)
+            outFile.close()
 
         return
 
