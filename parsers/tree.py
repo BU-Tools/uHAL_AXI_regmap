@@ -441,9 +441,14 @@ class tree(object):
 
         # write the defaults package header
 
-        def_pkg_name = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
 
         if (self.yml2hdl > 0):
+
+            def_yaml_name = self.outFileName.replace("PKG.vhd", "PKG.yml")
+            with open(def_yaml_name, 'w') as outFile:
+                outFile.write("# This file was auto-generated.\n")
+
+            def_pkg_name = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
             with open(def_pkg_name, 'w') as outfile:
                 outfile.write("--This file was auto-generated.\n")
                 outfile.write("--Modifications might be lost.\n")

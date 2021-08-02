@@ -1,3 +1,4 @@
+# This file was auto-generated.
 - MEM_TEST_BUILD_DATE_MON_t:
   - DAY : [ type: logic, length: 8 ]
   - MONTH : [ type: logic, length: 8 ]

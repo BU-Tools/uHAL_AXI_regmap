@@ -1,3 +1,4 @@
+# This file was auto-generated.
 - CM_USP_CM_CTRL_MON_t:
   - PWR_GOOD : [ type: logic ]
   - STATE : [ type: logic, length: 4 ]
