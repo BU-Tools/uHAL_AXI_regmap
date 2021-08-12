@@ -7,10 +7,10 @@ use ieee.numeric_std.all;
 use work.AXIRegWidthPkg.all;
 use work.AXIRegPkg.all;
 use work.types.all;
-{% if bram_count %}use work.BRAMPortPkg.all;{% endif %}
-use work.{{baseName}}_Ctrl.all;
-{{additionalLibraries}}
-entity {{baseName}}_map is
+use work.BRAMPortPkg.all;
+use work.MEM_TEST_Ctrl.all;
+
+entity MEM_TEST_map is
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -18,13 +18,13 @@ entity {{baseName}}_map is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-    {% if r_ops_output %}
-    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count %};
-    Ctrl             : out {{baseName}}_Ctrl_t
-    {% endif %}    
+    
+    Mon              : in  MEM_TEST_Mon_t;
+    Ctrl             : out MEM_TEST_Ctrl_t
+        
     );
-end entity {{baseName}}_map;
-architecture behavioral of {{baseName}}_map is
+end entity MEM_TEST_map;
+architecture behavioral of MEM_TEST_map is
   signal localAddress       : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
   signal localRdData        : slv_32_t;
   signal localRdData_latch  : slv_32_t;
@@ -34,18 +34,20 @@ architecture behavioral of {{baseName}}_map is
   signal localRdAck         : std_logic;
   signal regRdAck           : std_logic;
 
-  {% if bram_count %}
-  constant BRAM_COUNT       : integer := {{bram_count}};
+  
+  constant BRAM_COUNT       : integer := 2;
   signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
-  constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
-  constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
+  constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := (0 => 8
+,			1 => 8);
+  constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := (0 => x"00000100"
+,			1 => x"00000400");
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
-  {% endif %}
   
-  signal reg_data :  slv32_array_t(integer range 0 to {{regMapSize}});
-  constant Default_reg_data : slv32_array_t(integer range 0 to {{regMapSize}}) := (others => x"00000000");
+  
+  signal reg_data :  slv32_array_t(integer range 0 to 1280);
+  constant Default_reg_data : slv32_array_t(integer range 0 to 1280) := (others => x"00000000");
 begin  -- architecture behavioral
 
   -------------------------------------------------------------------------------
@@ -82,10 +84,13 @@ begin  -- architecture behavioral
       if regRdAck = '1' then
         localRdData_latch <= localRdData;
         localRdAck <= '1';
-      {% for index in range(bram_count) %}elsif BRAM_MISO({{loop.index0}}).rd_data_valid = '1' then
+      elsif BRAM_MISO(0).rd_data_valid = '1' then
         localRdAck <= '1';
-        localRdData_latch <= BRAM_MISO({{loop.index0}}).rd_data;
-{% endfor %}
+        localRdData_latch <= BRAM_MISO(0).rd_data;
+elsif BRAM_MISO(1).rd_data_valid = '1' then
+        localRdAck <= '1';
+        localRdData_latch <= BRAM_MISO(1).rd_data;
+
       end if;
     end if;
   end process latch_reads;
@@ -100,9 +105,51 @@ begin  -- architecture behavioral
       localRdData <= x"00000000";
       if localRdReq = '1' then
         regRdAck  <= '1';
-        case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
+        case to_integer(unsigned(localAddress(10 downto 0))) is
           
-{{r_ops_output}}
+        when 0 => --0x0
+          localRdData( 1)            <=  Mon.GIT_VALID;                    --
+        when 1 => --0x1
+          localRdData(31 downto  0)  <=  Mon.GIT_HASH_1;                   --
+        when 2 => --0x2
+          localRdData(31 downto  0)  <=  Mon.GIT_HASH_2;                   --
+        when 3 => --0x3
+          localRdData(31 downto  0)  <=  Mon.GIT_HASH_3;                   --
+        when 4 => --0x4
+          localRdData(31 downto  0)  <=  Mon.GIT_HASH_4;                   --
+        when 5 => --0x5
+          localRdData(31 downto  0)  <=  Mon.GIT_HASH_5;                   --
+        when 16 => --0x10
+          localRdData( 7 downto  0)  <=  Mon.BUILD_DATE.DAY;               --
+          localRdData(15 downto  8)  <=  Mon.BUILD_DATE.MONTH;             --
+          localRdData(31 downto 16)  <=  Mon.BUILD_DATE.YEAR;              --
+        when 17 => --0x11
+          localRdData( 7 downto  0)  <=  Mon.BUILD_TIME.SEC;               --
+          localRdData(15 downto  8)  <=  Mon.BUILD_TIME.MIN;               --
+          localRdData(23 downto 16)  <=  Mon.BUILD_TIME.HOUR;              --
+        when 18 => --0x12
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_00;                 --
+        when 19 => --0x13
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_01;                 --
+        when 20 => --0x14
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_02;                 --
+        when 21 => --0x15
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_03;                 --
+        when 22 => --0x16
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_04;                 --
+        when 23 => --0x17
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_05;                 --
+        when 24 => --0x18
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_06;                 --
+        when 25 => --0x19
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_07;                 --
+        when 26 => --0x1a
+          localRdData(31 downto  0)  <=  Mon.FPGA.WORD_08;                 --
+        when 32 => --0x20
+          localRdData(31 downto  0)  <=  reg_data(32)(31 downto  0);       --
+        when 768 => --0x300
+          localRdData(31 downto  0)  <=  reg_data(768)(31 downto  0);      --
+
 
           when others =>
             regRdAck <= '0';
@@ -112,34 +159,43 @@ begin  -- architecture behavioral
     end if;
   end process reads;
 
-{% if w_ops_output %}
+
   -------------------------------------------------------------------------------
   -- Record write decoding
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
 
   -- Register mapping to ctrl structures
-{{rw_ops_output}}
+  Ctrl.THING             <=  reg_data(32)(31 downto  0);      
+  Ctrl.LEVEL_TEST.THING  <=  reg_data(768)(31 downto  0);     
+
 
   reg_writes: process (clk_axi, reset_axi_n) is
   begin  -- process reg_writes
     if reset_axi_n = '0' then                 -- asynchronous reset (active low)
-{{def_ops_output}}
+      reg_data(32)(31 downto  0)  <= DEFAULT_MEM_TEST_CTRL_t.THING;
+      reg_data(768)(31 downto  0)  <= DEFAULT_MEM_TEST_CTRL_t.LEVEL_TEST.THING;
+
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
-{{a_ops_output}}
+      
+
       
       if localWrEn = '1' then
-        case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
-{{w_ops_output}}
+        case to_integer(unsigned(localAddress(10 downto 0))) is
+        when 32 => --0x20
+          reg_data(32)(31 downto  0)   <=  localWrData(31 downto  0);      --
+        when 768 => --0x300
+          reg_data(768)(31 downto  0)  <=  localWrData(31 downto  0);      --
+
           when others => null;
         end case;
       end if;
     end if;
   end process reg_writes;
-{% endif %}
 
 
-{% if bram_count %}  
+
+  
   -------------------------------------------------------------------------------
   -- BRAM decoding
   -------------------------------------------------------------------------------
@@ -155,23 +211,43 @@ begin  -- architecture behavioral
         BRAM_MOSI(iBRAM).address <= localAddress;
         latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
-        if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
+        if localAddress(10 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(10 downto BRAM_range(iBRAM)) then
           latchBRAM(iBRAM) <= localRdReq;
           BRAM_MOSI(iBRAM).enable  <= '1';
         end if;
       end if;
     end process BRAM_read;
   end generate BRAM_reads;
-{% endif %}
 
-{% if bram_count %}
+
+
   BRAM_asyncs: for iBRAM in 0 to BRAM_COUNT-1 generate
     BRAM_MOSI(iBRAM).clk     <= clk_axi;
     BRAM_MOSI(iBRAM).wr_data <= localWrData;
   end generate BRAM_asyncs;
   
-{{bram_MOSI_map}}
-{{bram_MISO_map}}    
+  Ctrl.MEM1.clk       <=  BRAM_MOSI(0).clk;
+  Ctrl.MEM1.enable    <=  BRAM_MOSI(0).enable;
+  Ctrl.MEM1.wr_enable <=  BRAM_MOSI(0).wr_enable;
+  Ctrl.MEM1.address   <=  BRAM_MOSI(0).address(8-1 downto 0);
+  Ctrl.MEM1.wr_data   <=  BRAM_MOSI(0).wr_data(13-1 downto 0);
+
+  Ctrl.LEVEL_TEST.MEM.clk       <=  BRAM_MOSI(1).clk;
+  Ctrl.LEVEL_TEST.MEM.enable    <=  BRAM_MOSI(1).enable;
+  Ctrl.LEVEL_TEST.MEM.wr_enable <=  BRAM_MOSI(1).wr_enable;
+  Ctrl.LEVEL_TEST.MEM.address   <=  BRAM_MOSI(1).address(8-1 downto 0);
+  Ctrl.LEVEL_TEST.MEM.wr_data   <=  BRAM_MOSI(1).wr_data(13-1 downto 0);
+
+
+  BRAM_MISO(0).rd_data(13-1 downto 0) <= Mon.MEM1.rd_data;
+  BRAM_MISO(0).rd_data(31 downto 13) <= (others => '0');
+  BRAM_MISO(0).rd_data_valid <= Mon.MEM1.rd_data_valid;
+
+  BRAM_MISO(1).rd_data(13-1 downto 0) <= Mon.LEVEL_TEST.MEM.rd_data;
+  BRAM_MISO(1).rd_data(31 downto 13) <= (others => '0');
+  BRAM_MISO(1).rd_data_valid <= Mon.LEVEL_TEST.MEM.rd_data_valid;
+
+    
 
   BRAM_writes: for iBRAM in 0 to BRAM_COUNT-1 generate
     BRAM_write: process (clk_axi,reset_axi_n) is    
@@ -180,13 +256,13 @@ begin  -- architecture behavioral
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
-        if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
+        if localAddress(10 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(10 downto BRAM_range(iBRAM)) then
           BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;
         end if;
       end if;
     end process BRAM_write;
   end generate BRAM_writes;
-{% endif %}
+
 
   
 end architecture behavioral;

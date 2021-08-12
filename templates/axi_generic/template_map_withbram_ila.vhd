@@ -9,7 +9,8 @@ use work.AXIRegPkg.all;
 use work.types.all;
 {% if bram_count %}use work.BRAMPortPkg.all;{% endif %}
 use work.{{baseName}}_Ctrl.all;
-entity {{baseName}}_interface is
+{{additionalLibraries}}
+entity {{baseName}}_map is
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -22,8 +23,8 @@ entity {{baseName}}_interface is
     Ctrl             : out {{baseName}}_Ctrl_t
     {% endif %}    
     );
-end entity {{baseName}}_interface;
-architecture behavioral of {{baseName}}_interface is
+end entity {{baseName}}_map;
+architecture behavioral of {{baseName}}_map is
   signal localAddress       : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
   signal localRdData        : slv_32_t;
   signal localRdData_latch  : slv_32_t;
