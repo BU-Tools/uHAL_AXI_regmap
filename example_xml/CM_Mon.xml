@@ -1,0 +1,32 @@
+<node id="MONITOR">
+  <node id="COUNT_16X_BAUD"       address="0x0" mask="0x000000FF" permission="rw" description="Baud 16x counter.  Set by 50Mhz/(baudrate(hz) * 16). Nominally 27" parameters="Table=CM;Column=MON_STATE;Row=_2;Status=4;default=0x1B" />
+  <node id="ACTIVE"               address="0x0" mask="0x00000100" permission="r"  description="Monitoring active. Is zero when no update in the last second." parameters="Table=CM;Column=MON_STATE;Row=_2;Status=1;Show=z;Format=t_0_INACTIVE_1_ACTIVE" />
+  <node id="HISTORY_VALID"        address="0x0" mask="0x0000F000" permission="r"  description="bytes valid in debug history"/>
+  <node id="HISTORY"              address="0x1" mask="0xFFFFFFFF" permission="r"  description="4 bytes of uart history"/>
+
+  <node id="BAD_TRANS"            address="0x2">
+    <node id="ADDR"                             mask="0x000000FF" permission="r"  description="Sensor addr bits"  parameters="Table=CM;Column=_5;Row=_4;Status=2"/>
+    <node id="DATA"                             mask="0x00FFFF00" permission="r"  description="Sensor data bits"  parameters="Table=CM;Column=_5;Row=_4;Status=2"/>
+    <node id="ERROR_MASK"                       mask="0xFF000000" permission="r"  description="Sensor error bits" parameters="Table=CM;Column=_5;Row=_4;Status=2;Format=t_0_OK_1_BadSOF_2_AXIBusyByte2_4_Byte2NotData_8_Byte3NotData_16_Byte4NotData_32_UNKNOWN"/>
+  </node>
+  
+  <node id="LAST_TRANS"           address="0x3">
+    <node id="ADDR"                             mask="0x000000FF" permission="r"  description="Sensor addr bits"  parameters="Table=CM;Column=_5;Row=_4;Status=2"/>
+    <node id="DATA"                             mask="0x00FFFF00" permission="r"  description="Sensor data bits"  parameters="Table=CM;Column=_5;Row=_4;Status=2"/>
+    <node id="ERROR_MASK"                       mask="0xFF000000" permission="r"  description="Sensor error bits" parameters="Table=CM;Column=_5;Row=_4;Status=2;Format=t_0_OK_1_BadSOF_2_AXIBusyByte2_4_Byte2NotData_8_Byte3NotData_16_Byte4NotData_32_UNKNOWN"/>
+  </node>
+  
+  <node id="ERRORS"               address="0x4">
+    <node id="RESET"              address="0x0" mask="0x00000001" permission="rw" description="Reset monitoring error counters"/>
+    <node id="CNT_BAD_SOF"        address="0x1" mask="0x0000FFFF" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+    <node id="CNT_AXI_BUSY_BYTE2" address="0x1" mask="0xFFFF0000" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+    <node id="CNT_BYTE2_NOT_DATA" address="0x2" mask="0x0000FFFF" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+    <node id="CNT_BYTE3_NOT_DATA" address="0x2" mask="0xFFFF0000" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+    <node id="CNT_BYTE4_NOT_DATA" address="0x3" mask="0x0000FFFF" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+    <node id="CNT_TIMEOUT"        address="0x3" mask="0xFFFF0000" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+    <node id="CNT_UNKNOWN"        address="0x4" mask="0x0000FFFF" permission="r"  description="Monitoring errors. Count of invalid byte types in parsing." parameters="Table=CM;Column=_5;Row=_4;Status=1;Show=nz;Format=u"/>
+  </node>
+
+  <node id="UART_BYTES"           address="0x9" mask="0xFFFFFFFF" permission="r"  description="Count of UART bytes from CM MCU" parameters="Table=CM;Column=Bytes;Row=_4;Status=3;Format=u"/>
+  <node id="SM_TIMEOUT"           address="0xA" mask="0xFFFFFFFF" permission="rw" description="Count to wait for in state machine before timing out (50Mhz clk)" parameters="default=0x1FCA0" />
+</node>

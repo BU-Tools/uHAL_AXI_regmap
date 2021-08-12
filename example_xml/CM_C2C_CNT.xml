@@ -1,0 +1,15 @@
+<node id="CNT">
+  <node id="INIT_ALLTIME"         address="0x0" permission="r"  description="Counter for every PHYLANEUP cycle" parameters="Table=CM;Column=PHYLANE_SINGLEBIT_ERROR;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="INIT_SHORTTERM"       address="0x1" permission="r"  description="Counter for PHYLANEUP cycles since lase C2C INITIALIZE" parameters="Table=CM;Column=PHYLANE_MULTIBIT_ERROR;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="CONFIG_ERROR_COUNT"   address="0x2" permission="r"  description="Counter for CONFIG_ERROR"                 parameters="Table=CM;Column=CONFIG_ERROR_COUNT;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="LINK_ERROR_COUNT"     address="0x3" permission="r"  description="Counter for LINK_ERROR"                   parameters="Table=CM;Column=LINK_ERROR_COUNT;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="MB_ERROR_COUNT"       address="0x4" permission="r"  description="Counter for MB_ERROR"                     parameters="Table=CM;Column=MB_ERROR_COUNT;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="PHY_HARD_ERROR_COUNT" address="0x5" permission="r"  description="Counter for PHY_HARD_ERROR"               parameters="Table=CM;Column=PHY_HARD_ERR_COUNT;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="PHY_SOFT_ERROR_COUNT" address="0x6" permission="r"  description="Counter for PHY_SOFT_ERROR"               parameters="Table=CM;Column=PHY_SOFT_ERR_COUNT;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="PHYLANE_STATE"        address="0x7" permission="r"  description="Current state of phy_lane_control module" parameters="Table=CM;Column=PHYLANE_STATE;Row=_2_3;Status=1;Format=t_0_IDLE_1_INITIALIZING_2_WAITING_7_LOCKED_6_errorWAITING" mask="0x7"/>
+  <node id="RESET_COUNTERS"       address="0x8" permission="w" description="Reset counters in Monitor" mask="0x1"/>
+  <node id="PHY_ERRORSTATE_COUNT" address="0x9" permission="r"  description="Count for phylane in error state"         parameters="Table=CM;Column=PHYLANE_ERROR_COUNT;Row=_2_3;Status=1;Show=nz;Format=u"/>
+  <node id="USER_CLK_FREQ"        address="0xA" permission="r"  description="Frequency of the user C2C clk"            parameters="Table=CM;Column=C2C_FREQ;Row=_2_3;Status=2;Show=nz;Format=m_1_1_1000000_1_0_1"/>
+
+</node>
+  

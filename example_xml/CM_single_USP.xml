@@ -1,0 +1,10 @@
+<node id="CM">                                                                                                     
+  <!-- CTRL 0x0 -> 0x3 mapped to 0x00 -> 0x03 -->
+ <node id="CTRL"        address="0x00"  module="file://CM_CTRL.xml"/>
+  <!-- CTRL 0x0 -> 0x19 mapped to 0x10 -> 0x29 -->
+  <node id="C2C_1"      fwinfo="type=array" address="0x10"  module="file://CM_C2C_USP.xml"/> 
+  <!-- CTRL 0x0 -> 0x19 mapped to 0x30 -> 0x49 -->
+  <node id="C2C_2"      fwinfo="type=array" address="0x30"  module="file://CM_C2C_USP.xml"/> 
+  <!-- MONITOR 0x0 -> 0xA mapped to 0x50 -> 0x5A -->
+  <node id="MONITOR"    address="0x50"  module="file://CM_Mon.xml"/>
+</node>                                                                                                 

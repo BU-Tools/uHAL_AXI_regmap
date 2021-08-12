@@ -1,0 +1,4 @@
+[submodule "axiReg"]
+	path = axiReg
+	url = https://gitlab.com/BU-EDF/axi-vhdl-package.git
+	branch = master
