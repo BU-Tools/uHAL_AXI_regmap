@@ -212,7 +212,7 @@ class tree(object):
             outFile.close()
         return defaultName
 
-    def traversePkg(self, current_node=None, padding='\t', arrayOffsets=[0]):
+    def traversePkg(self, current_node=None, padding='\t', arrayOffsets=[[0,""]]):
         if not current_node:
             current_node = self.root
         package_mon_entries = OrderedDict()
@@ -244,10 +244,10 @@ class tree(object):
                                                child.dataWidth)
                 #if this was inside of an array, this code will only be run of the first entry of the array
                 #to map the array length number of BRAMs, the arrayOffsets array holds all the additional offsets we will need
-                for offset in arrayOffsets:
+                for struct in arrayOffsets:
+                    offset=struct[0]
                     #create a BRAM conection for each array index
                     self.bramCount = self.bramCount + 1
-                    
                     if self.bramCount == 1:
                         self.bramAddrs = "%d => x\"%08X\"" % \
                             (self.bramCount-1, child.getLocalAddress()+offset)
@@ -264,7 +264,7 @@ class tree(object):
                     if bram_end > self.bram_max_addr:
                         self.bram_max_addr = bram_end
                     
-                    bramTableName = child.getPath(expandArray=False)
+                    bramTableName = struct[1]+"."+child.id#child.getPath(expandArray=False)
                     bramTableName = bramTableName[bramTableName.find(".")+1:]
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".clk       <=  BRAM_MOSI(" + \
@@ -298,11 +298,12 @@ class tree(object):
                     #this current arraying will add
                     for entry in arrayOffsets:
                         for array_id , array_child in child.entries.items():
-                            childArrayOffsets.append(entry + array_child.address)
+                            childArrayOffsets.append([entry[0] + array_child.address,current_node.getPath(True,True)+"."+child.id+"("+str(array_id)+")"])
                 else:
                     childArrayOffsets=arrayOffsets
-
-                child_records = self.traversePkg(child, padding+'\t', childArrayOffsets)
+                
+                if not child.isMem:
+                    child_records = self.traversePkg(child, padding+'\t', childArrayOffsets)
                 package_description[child.id] = ""
                 array_postfix = ["", "_ARRAY"][child.isArray()]
 
@@ -616,6 +617,10 @@ class tree(object):
         if not current_node:
             current_node = self.root
 
+        if current_node.isMem:
+            return
+
+
         # expand the array entries
         expanded_child_list = []
         for child in current_node.children:
@@ -630,8 +635,6 @@ class tree(object):
             if len(child.children) != 0:
                 self.traverseRegMap(child, padding+'\t')
             else:
-                if child.isMem:
-                    continue
                 bits = child.getBitRange()
 
                 if child.permission == 'r':
