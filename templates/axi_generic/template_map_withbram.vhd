@@ -36,8 +36,8 @@ architecture behavioral of {{baseName}}_map is
 
   {% if bram_count %}
   constant BRAM_COUNT       : integer := {{bram_count}};
-  signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
-  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
+--  signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
+--  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
@@ -53,6 +53,9 @@ begin  -- architecture behavioral
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
   AXIRegBridge : entity work.axiLiteRegBlocking
+    generic map (
+      READ_TIMEOUT => 512
+      )
     port map (
       clk_axi     => clk_axi,
       reset_axi_n => reset_axi_n,
@@ -149,15 +152,16 @@ begin  -- architecture behavioral
     BRAM_read: process (clk_axi,reset_axi_n) is
     begin  -- process BRAM_reads
       if reset_axi_n = '0' then
-        latchBRAM(iBRAM) <= '0';
+--        latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).address <= localAddress;
-        latchBRAM(iBRAM) <= '0';
+--        latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
         if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
-          latchBRAM(iBRAM) <= localRdReq;
-          BRAM_MOSI(iBRAM).enable  <= '1';
+--          latchBRAM(iBRAM) <= localRdReq;
+--          BRAM_MOSI(iBRAM).enable  <= '1';
+          BRAM_MOSI(iBRAM).enable  <= localRdReq;
         end if;
       end if;
     end process BRAM_read;
