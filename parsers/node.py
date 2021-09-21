@@ -103,7 +103,6 @@ class node(object):
 
                 self.isMem = True
                 self.addrWidth = int(size_log2)
-
         # sort children by address and mask
         self.children = sorted(self.children, key=lambda child: (
             child.address << 32) + child.mask)
