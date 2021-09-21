@@ -82,9 +82,6 @@ class tree(object):
                     length = int(high)-int(low)+1
                     outFile.write(", length: "+str(length))
 
-                # if len(description[memberName]) > 0:
-                #     outFile.write(", description: " + description[memberName])
-
                 outFile.write(" ]\n")
 
             if current_node.isArray():
@@ -215,6 +212,7 @@ class tree(object):
     def traversePkg(self, current_node=None, padding='\t', arrayOffsets=[[0,""]]):
         if not current_node:
             current_node = self.root
+            arrayOffsets=[[0,current_node.id]]
         package_mon_entries = OrderedDict()
         package_ctrl_entries = OrderedDict()
         package_ctrl_entry_defaults = OrderedDict()
@@ -298,9 +296,12 @@ class tree(object):
                     #this current arraying will add
                     for entry in arrayOffsets:
                         for array_id , array_child in child.entries.items():
-                            childArrayOffsets.append([entry[0] + array_child.address,current_node.getPath(True,True)+"."+child.id+"("+str(array_id)+")"])
+                            childArrayOffsets.append([entry[0] + array_child.address,
+                                                      entry[1]+"."+child.id+"("+str(array_id)+")"])
                 else:
-                    childArrayOffsets=arrayOffsets
+                    for entry in arrayOffsets:
+                        childArrayOffsets.append([entry[0] + child.address,
+                                                  entry[1] + "." + child.id])
                 
                 if not child.isMem:
                     child_records = self.traversePkg(child, padding+'\t', childArrayOffsets)
@@ -384,7 +385,6 @@ class tree(object):
 
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_MON_t'
-            # print(padding+baseName)
 
             if self.yml2hdl == 0:
                 func = self.generateRecord
@@ -635,6 +635,10 @@ class tree(object):
             if len(child.children) != 0:
                 self.traverseRegMap(child, padding+'\t')
             else:
+                if child.isMem :
+                    #this is a simple memory, so we don't have any names
+                    continue
+
                 bits = child.getBitRange()
 
                 if child.permission == 'r':
