@@ -11,6 +11,9 @@ use work.types.all;
 use work.{{baseName}}_Ctrl.all;
 {{additionalLibraries}}
 entity {{baseName}}_map is
+  generic (
+    READ_TIMEOUT     : integer := 2048
+    );
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -54,7 +57,7 @@ begin  -- architecture behavioral
   -------------------------------------------------------------------------------
   AXIRegBridge : entity work.axiLiteRegBlocking
     generic map (
-      READ_TIMEOUT => 512
+      READ_TIMEOUT => READ_TIMEOUT
       )
     port map (
       clk_axi     => clk_axi,
