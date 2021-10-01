@@ -248,17 +248,17 @@ class tree(object):
                     self.bramCount = self.bramCount + 1
                     if self.bramCount == 1:
                         self.bramAddrs = "%d => x\"%08X\"" % \
-                            (self.bramCount-1, child.getLocalAddress()+offset)
+                            (self.bramCount-1, child.address+offset)
                         self.bramRanges = "%d => %d" % \
                             (self.bramCount-1, child.addrWidth)
                     
                     else:
                         self.bramAddrs = "%s\n,\t\t\t%d => x\"%08X\"" % \
-                            (self.bramAddrs, self.bramCount-1, child.getLocalAddress()+offset)
+                            (self.bramAddrs, self.bramCount-1, child.address+offset)
                         self.bramRanges = "%s\n,\t\t\t%d => %d" % \
                             (self.bramRanges, self.bramCount-1, child.addrWidth)
                     
-                    bram_end = child.getLocalAddress() + 2**child.addrWidth + offset
+                    bram_end = child.address + 2**child.addrWidth + offset
                     if bram_end > self.bram_max_addr:
                         self.bram_max_addr = bram_end
                     
