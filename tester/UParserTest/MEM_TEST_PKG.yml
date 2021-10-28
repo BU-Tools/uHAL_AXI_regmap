@@ -40,7 +40,7 @@ HDL_Types:
  - address   : [ type: logic, length: 8 ]
  - wr_data   : [ type: logic, length: 13 ]
 
-- MEM_TEST_MEM1_MISO_t
+- MEM_TEST_MEM1_MISO_t:
   - rd_data       : [ type: logic, length: 13 ]
   - rd_data_valid : [ type: logic ]
 
@@ -51,7 +51,7 @@ HDL_Types:
  - address   : [ type: logic, length: 8 ]
  - wr_data   : [ type: logic, length: 13 ]
 
-- MEM_TEST_LEVEL_TEST_MEM_MISO_t
+- MEM_TEST_LEVEL_TEST_MEM_MISO_t:
   - rd_data       : [ type: logic, length: 13 ]
   - rd_data_valid : [ type: logic ]
 

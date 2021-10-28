@@ -207,7 +207,7 @@ class tree(object):
         if (self.yml2hdl > 0):
             with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
                 # Generate and print a VHDL record
-                outFile.write("- %s\n" % fullName)
+                outFile.write("- %s:\n" % fullName)
                 outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
                 outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
                 outFile.close()
