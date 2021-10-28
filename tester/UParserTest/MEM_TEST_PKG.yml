@@ -42,7 +42,7 @@ HDL_Types:
 
 - MEM_TEST_MEM1_MISO_t
   - rd_data       : [ type: logic, length: 13 ]
-  - rd_data_valid : logic ]
+  - rd_data_valid : [ type: logic ]
 
 - MEM_TEST_LEVEL_TEST_MEM_MOSI_t:
  - clk       : [ type: logic ]
@@ -53,7 +53,7 @@ HDL_Types:
 
 - MEM_TEST_LEVEL_TEST_MEM_MISO_t
   - rd_data       : [ type: logic, length: 13 ]
-  - rd_data_valid : logic ]
+  - rd_data_valid : [ type: logic ]
 
 - MEM_TEST_LEVEL_TEST_MON_t:
   - MEM : [ type: MEM_TEST_LEVEL_TEST_MEM_MISO_t ]

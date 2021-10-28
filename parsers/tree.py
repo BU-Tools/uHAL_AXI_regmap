@@ -209,7 +209,7 @@ class tree(object):
                 # Generate and print a VHDL record
                 outFile.write("- %s\n" % fullName)
                 outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
-                outFile.write("  - rd_data_valid : logic ]\n\n")
+                outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
                 outFile.close()
 
         return fullName
