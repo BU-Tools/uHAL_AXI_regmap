@@ -184,11 +184,11 @@ class tree(object):
             with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
-                outFile.write(" - clk       : [ type: logic ]\n")
-                outFile.write(" - enable    : [ type: logic ]\n")
-                outFile.write(" - wr_enable : [ type: logic ]\n")
-                outFile.write(" - address   : [ type: logic, length: %d ]\n" % addr_size)
-                outFile.write(" - wr_data   : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("  - clk       : [ type: logic ]\n")
+                outFile.write("  - enable    : [ type: logic ]\n")
+                outFile.write("  - wr_enable : [ type: logic ]\n")
+                outFile.write("  - address   : [ type: logic, length: %d ]\n" % addr_size)
+                outFile.write("  - wr_data   : [ type: logic, length: %d ]\n" % data_size)
                 outFile.write("\n")
                 outFile.close()
 
