@@ -24,7 +24,7 @@ entity CM_USP_map is
     
     Mon              : in  CM_USP_Mon_t;
     Ctrl             : out CM_USP_Ctrl_t
-
+        
     );
 end entity CM_USP_map;
 architecture behavioral of CM_USP_map is

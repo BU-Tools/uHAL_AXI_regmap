@@ -24,7 +24,7 @@ entity MEM_TEST_map is
     
     Mon              : in  MEM_TEST_Mon_t;
     Ctrl             : out MEM_TEST_Ctrl_t
-
+        
     );
 end entity MEM_TEST_map;
 architecture behavioral of MEM_TEST_map is
