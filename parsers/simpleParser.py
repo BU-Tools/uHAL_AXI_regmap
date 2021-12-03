@@ -2,6 +2,8 @@ from __future__ import print_function
 from lxml import etree
 import os
 
+from os.path import exists
+
 
 class ParserTree:
     def __init__(self, root=None):
@@ -17,6 +19,8 @@ class ParserTree:
         """
 
         if currentElement is None:
+            if not exists(filepath):
+                raise "File "+filepath+" not found"
             f = open(filepath, "rb")
             parser = etree.XMLParser(remove_comments=True)
             tree = etree.parse(f, parser=parser)
