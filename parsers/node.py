@@ -90,8 +90,8 @@ class node(object):
                     self.tree.log.critical("Critical: blockram size too small")
                     sys.exit(EXIT_CODE_NODE_INVALID_MEM)
                 # test if the the range is aligned to its address
-                if self.address % (mem_addr_size) != 0:
-                    self.tree.log.critical(
+                if self.getLocalAddress() % (mem_addr_size) != 0:
+                    print(
                         "Critical: blockram address "+str(self.address)+" is not aligned to size"+str(mem_addr_size))
                     sys.exit(EXIT_CODE_NODE_INVALID_MEM)
                 # test if the size is in the valid range
