@@ -11,6 +11,9 @@ use work.types.all;
 use work.CM_USP_Ctrl.all;
 
 entity CM_USP_map is
+  generic (
+    READ_TIMEOUT     : integer := 2048
+    );
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -45,6 +48,9 @@ begin  -- architecture behavioral
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
   AXIRegBridge : entity work.axiLiteRegBlocking
+    generic map (
+      READ_TIMEOUT => READ_TIMEOUT
+      )
     port map (
       clk_axi     => clk_axi,
       reset_axi_n => reset_axi_n,
