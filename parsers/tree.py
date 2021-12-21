@@ -180,6 +180,18 @@ class tree(object):
             outFile.write("    wr_data   : std_logic_vector(%d-1 downto 0);\n" % data_size)
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
+        if (self.yml2hdl > 0):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - clk       : [ type: logic ]\n")
+                outFile.write("  - enable    : [ type: logic ]\n")
+                outFile.write("  - wr_enable : [ type: logic ]\n")
+                outFile.write("  - address   : [ type: logic, length: %d ]\n" % addr_size)
+                outFile.write("  - wr_data   : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("\n")
+                outFile.close()
+
         return fullName
 
     def buildCustomBRAM_MISO(self, name, addr_size, data_size):
@@ -191,6 +203,15 @@ class tree(object):
             outFile.write("    rd_data_valid   : std_logic;\n")
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
+
+        if (self.yml2hdl > 0):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                outFile.close()
+
         return fullName
 
     def buildDefaultBRAM_MOSI(self, name, addr_size, data_size):
