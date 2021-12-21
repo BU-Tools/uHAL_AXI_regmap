@@ -698,6 +698,12 @@ class tree(object):
                     self.action_ops += "Ctrl.%s <= %s;\n" % \
                         (child.getPath(includeRoot=False, expandArray=True), others)
 
+                    # default
+                    self.default_ops += "reg_data(%2d)(%s) <= CTRL_t.%s;\n" % \
+                        (child.getLocalAddress(),
+                         bits,
+                         child.getPath(includeRoot=False, expandArray=True))
+
         return
 
     def generateRegMap(self, outFileName=None, regMapTemplate="template_map.vhd"):
