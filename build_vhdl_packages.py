@@ -135,16 +135,6 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
 def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
                         outpath, xmlpath, name, yml2hdl=0):
 
-    # global read_ops
-    # global write_ops
-    # global action_ops
-    # global readwrite_ops
-    #
-    # read_ops = dict(list())
-    # readwrite_ops = str()
-    # write_ops = dict(list())
-    # action_ops = str()
-
     if not os.path.exists(outpath):
         print("Creating "+outpath)
         try:
@@ -152,7 +142,6 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
         except:
             print("Cannot create "+outpath)
             quit()
-
     # generate unique(ish) filename for testxml
     test_xml = ""
     if len(outpath) > 0:
