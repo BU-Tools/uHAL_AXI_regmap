@@ -20,7 +20,7 @@ class ParserTree:
 
         if currentElement is None:
             if not exists(filepath):
-                raise "File "+filepath+" not found"
+                raise BaseException("File "+filepath+" not found")
             f = open(filepath, "rb")
             parser = etree.XMLParser(remove_comments=True)
             tree = etree.parse(f, parser=parser)
