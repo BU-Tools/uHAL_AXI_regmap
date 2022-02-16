@@ -8,6 +8,10 @@ use work.AXIRegPkg.all;
 use work.types.all;
 use work.{{baseName}}_Ctrl.all;
 {{additionalLibraries}}
+
+-- for AXI map range check
+use work.AXISlaveAddrPkg.all;
+
 entity {{baseName}}_map is
   port (
     clk_axi          : in  std_logic;
@@ -38,6 +42,13 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  assert ((4*{{regMapSize}}) < AXI_RANGE_{{baseName}})
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(to_integer(AXI_RANGE_{{baseName}}))
+  severity ERROR;
+  assert ((4*{{regMapSize}}) >= AXI_RANGE_{{baseName}})
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(to_integer(AXI_RANGE_{{baseName}}))
+  severity NOTE;
+
   AXIRegBridge : entity work.axiLiteReg
     port map (
       clk_axi     => clk_axi,
