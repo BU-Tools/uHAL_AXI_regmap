@@ -43,10 +43,10 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
-  assert ((4*{{regMapSize}}) < ALLOCATED_MEMORY_RANGE)
+  assert ((4*{{regMapSize}}) <= ALLOCATED_MEMORY_RANGE)
     report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
   severity ERROR;
-  assert ((4*{{regMapSize}}) >= ALLOCATED_MEMORY_RANGE)
+  assert ((4*{{regMapSize}}) > ALLOCATED_MEMORY_RANGE)
     report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
   severity NOTE;
 
