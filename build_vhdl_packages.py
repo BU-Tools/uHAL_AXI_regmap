@@ -1,4 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
 """
 
 The script takes an uHAL compliant XML input file
@@ -9,7 +17,7 @@ inefficient with 32b address space), so slaves will appear at many
 locations.
 
 """
-from __future__ import print_function
+#from __future__ import print_function
 from parsers import simpleParser, tree
 from tester import generate_test_xml
 import sys
