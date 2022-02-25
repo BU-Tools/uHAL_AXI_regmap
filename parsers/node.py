@@ -226,7 +226,7 @@ class node(object):
 
     @staticmethod
     def readpermission(permission):
-        import uhal
+#        import uhal
         if permission == uhal.NodePermission.READ:
             return 'r'
         elif permission == uhal.NodePermission.READWRITE:
