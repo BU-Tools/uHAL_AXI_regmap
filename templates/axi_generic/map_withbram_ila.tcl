@@ -4,19 +4,19 @@ set output_path ${apollo_root_path}/configs/${build_name}/cores/
 
 file mkdir ${output_path}
 
-if { [file exists ${output_path}/${name}/${name}.xci] && ([file mtime ${output_path}/${name}/${name}.xci] > [file mtime ${output_path}/${name}.tcl])} {
-    set filename "${output_path}/${name}/${name}.xci"
-    set ip_name [file rootname [file tail $filename]]
-    #normal xci file
-    read_ip $filename
-    set isLocked [get_property IS_LOCKED [get_ips $ip_name]]
-    puts "IP $ip_name : locked = $isLocked"
-    set upgrade  [get_property UPGRADE_VERSIONS [get_ips $ip_name]]
-    if {$isLocked && $upgrade != ""} {
-	puts "Upgrading IP"
-	upgrade_ip [get_ips $ip_name]
-    }    
-} else {
+####if { [file exists ${output_path}/${name}/${name}.xci] && ([file mtime ${output_path}/${name}/${name}.xci] > [file mtime ${output_path}/${name}.tcl])} {
+####    set filename "${output_path}/${name}/${name}.xci"
+####    set ip_name [file rootname [file tail $filename]]
+####    #normal xci file
+####    read_ip $filename
+####    set isLocked [get_property IS_LOCKED [get_ips $ip_name]]
+####    puts "IP $ip_name : locked = $isLocked"
+####    set upgrade  [get_property UPGRADE_VERSIONS [get_ips $ip_name]]
+####    if {$isLocked && $upgrade != ""} {
+####	puts "Upgrading IP"
+####	upgrade_ip [get_ips $ip_name]
+####    }    
+####} else {
     file delete -force ${apollo_root_path}/configs/${build_name}/cores/${name}
 
     #create IP
@@ -49,6 +49,6 @@ if { [file exists ${output_path}/${name}/${name}.xci] && ([file mtime ${output_p
 			    CONFIG.C_ENABLE_ILA_AXI_MON {false} \
 			    CONFIG.C_MONITOR_TYPE {Native} \
 			   ] [get_ips ${name} ]
-}
+####}
 
 

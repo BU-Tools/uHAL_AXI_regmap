@@ -12,7 +12,8 @@ use work.{{baseName}}_Ctrl.all;
 {{additionalLibraries}}
 entity {{baseName}}_map is
   generic (
-    READ_TIMEOUT     : integer := 1024
+    READ_TIMEOUT     : integer := 1024;
+    ALLOCATED_MEMORY_RANGE : integer
     );
   port (
     clk_axi          : in  std_logic;
@@ -55,6 +56,12 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  assert ((4*{{regMapSize}}) < ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity ERROR;
+  assert ((4*{{regMapSize}}) >= ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity NOTE;
   AXIRegBridge : entity work.axiLiteRegBlocking
     generic map (
       READ_TIMEOUT => READ_TIMEOUT
