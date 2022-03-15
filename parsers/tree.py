@@ -67,7 +67,7 @@ class tree(object):
 
             for memberName, member in sorted_members:
 
-                outFile.write("  - " + memberName + " : [ type: ")
+                outFile.write("  - " + memberName + " : [type': ")
 
                 # rename types from VHDL to yml2hdl
                 # (following system verilog everything is a logic type in yml2hdl)
@@ -87,6 +87,46 @@ class tree(object):
             if current_node.isArray():
                 array_index_string = "array: " + str(1 + max(current_node.entries.keys()))+", type: "
                 outFile.write("\n- " + baseName + "_ARRAY: [" + array_index_string + baseName + "]")
+
+            outFile.write("\n\n")
+            outFile.close()
+            return
+
+    def generate_yaml3(self, baseName, current_node, members, description):
+        """ Generate and print a VHDL record into yml2hdl v{x} format"""
+
+        outFileName = self.outFileName.replace("PKG.vhd", "PKG.yml")
+
+        with open(outFileName, 'a') as outFile:
+
+            outFile.write("- " + baseName+":\n")
+            sorted_members = sorted(members.items(),
+                                    key=lambda item:
+                                    (current_node.getChild(item[0]).address << 32) +
+                                    current_node.getChild(item[0]).mask)
+
+            for memberName, member in sorted_members:
+
+                outFile.write("  - " + memberName + " : { type: ")
+
+                # rename types from VHDL to yml2hdl
+                # (following system verilog everything is a logic type in yml2hdl)
+                member_type = member.replace("std_logic_vector", "logic").replace("std_logic", "logic")
+                member_type = re.sub("\(.*\\)", "", member_type)  # eliminiate the vector size here
+
+                outFile.write(member_type)
+
+                # handle std_logic_vectors.. have to extract the vector size
+                if ("downto" in member):
+                    (high, low) = re.search(r'\((.*?)\)', member).group(1).replace("downto", " ").split()
+                    length = int(high)-int(low)+1
+                    outFile.write(", range : [ "+ str(length)+ " , 0 ]")
+
+                outFile.write(" }\n")
+
+            if current_node.isArray():
+                array_index_string = "array : [ " + str(1 + max(current_node.entries.keys()))+" , 0 ], type : "
+                outFile.write("\n- " + baseName + "_ARRAY: {" + array_index_string + baseName + "}")
 
             outFile.write("\n\n")
             outFile.close()
@@ -205,12 +245,27 @@ class tree(object):
             outFile.close()
 
         if (self.yml2hdl > 0):
-            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
-                # Generate and print a VHDL record
-                outFile.write("- %s:\n" % fullName)
-                outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
-                outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
-                outFile.close()
+            if (self.yml2hdl == 1):
+                with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                    # Generate and print a VHDL record
+                    outFile.write("- %s:\n" % fullName)
+                    outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                    outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                    outFile.close()
+            if (self.yml2hdl == 2):
+                with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                    # Generate and print a VHDL record
+                    outFile.write("- %s:\n" % fullName)
+                    outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                    outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                    outFile.close()
+            # if (self.yml2hdl == 3):
+            #     with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+            #         # Generate and print a VHDL record
+            #         outFile.write("- %s:\n" % fullName)
+            #         outFile.write("  - rd_data       : { 'type': 'logic', 'length': %d }\n" % data_size)
+            #         outFile.write("  - rd_data_valid : { 'type': 'logic' }\n\n")
+            #         outFile.close()
 
         return fullName
 
@@ -411,6 +466,8 @@ class tree(object):
                 func = self.generateRecord
             if self.yml2hdl == 1 or self.yml2hdl == 2:
                 func = self.generate_yaml
+            if self.yml2hdl == 3:
+                func = self.generate_yaml3
 
             ret['mon'] = func(baseName,
                               current_node,
@@ -426,6 +483,8 @@ class tree(object):
                 func = self.generateRecord
             if self.yml2hdl == 1 or self.yml2hdl == 2:
                 func = self.generate_yaml
+            if self.yml2hdl == 3:
+                func = self.generate_yaml3
 
             ret['ctrl'] = func(baseName,
                                current_node,
@@ -477,7 +536,7 @@ class tree(object):
             # write the yaml output header
             def_yaml_name = self.outFileName.replace("PKG.vhd", "PKG.yml")
             with open(def_yaml_name, 'w') as outFile:
-                outFile.write("# yml2hdl v%d\n" % self.yml2hdl)
+                outFile.write("# yml2hdl v0.%d\n" % self.yml2hdl)
                 outFile.write("# This file was auto-generated.\n")
                 outFile.write("# Modifications might be lost.\n")
                 if (self.yml2hdl == 1):
@@ -497,6 +556,15 @@ class tree(object):
                     outFile.write("    - shared_lib: [common_ieee]\n")
                     outFile.write("\n")
                     outFile.write("hdl:\n")
+                    outFile.write("\n")
+                if (self.yml2hdl == 3):
+                    outFile.write("config:\n")
+                    outFile.write("  basic_functions : False\n")
+                    outFile.write("  packages:\n")
+                    outFile.write("    - ieee: [std_logic_1164, numeric_std, math_real]\n")
+                    outFile.write("    - shared_lib: [common_ieee]\n")
+                    outFile.write("\n")
+                    outFile.write("types:\n")
                     outFile.write("\n")
 
                 outFile.close()
