@@ -6,7 +6,7 @@ use ieee.numeric_std.all;
 use work.AXIRegWidthPkg.all;
 use work.AXIRegPkg.all;
 use work.types.all;
-use work.{{baseName}}_Ctrl.all;
+use work.{{baseName}}_Ctrl_pkg.all;
 {{additionalLibraries}}
 entity {{baseName}}_map is
   port (
