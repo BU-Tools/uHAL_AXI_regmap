@@ -418,7 +418,7 @@ class tree(object):
                 # read write
                 elif child.permission == 'rw':
                     package_ctrl_entries[child.id] = package_entries
-
+                    # print('rw : ' + child.id + " : " + bits)
                     # store data for default signal
                     if "default" in child.parameters:
                         intValue = int(child.parameters["default"], 0)
@@ -434,7 +434,7 @@ class tree(object):
                         else:
                             package_ctrl_entry_defaults[child.id] = \
                                 "'%d'" % (intValue)
-
+                    
                     # no explicit default, default to 0 for std_logic_vectors
                     elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
@@ -445,6 +445,7 @@ class tree(object):
 
                 # write only (action registers)
                 elif child.permission == 'w':
+                    # print('w : ' + child.id + " : " + bits)
 
                     # store data for default signal
                     if "default" in child.parameters:
@@ -527,7 +528,7 @@ class tree(object):
                 # yml2hdl libraries
                 if (self.yml2hdl > 0):
                     outFile.write("library shared_lib;\n")
-                    outFile.write("use shared_lib.common_ieee.all;\n")
+                    outFile.write("use shared_lib.common_ieee_pkg.all;\n")
                 outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
                 outFile.close()
 
@@ -562,7 +563,7 @@ class tree(object):
                     outFile.write("  basic_functions : False\n")
                     outFile.write("  packages:\n")
                     outFile.write("    - ieee: [std_logic_1164, numeric_std, math_real]\n")
-                    outFile.write("    - shared_lib: [common_ieee]\n")
+                    outFile.write("    - shared_lib: [common_ieee_pkg]\n")
                     outFile.write("\n")
                     outFile.write("types:\n")
                     outFile.write("\n")
