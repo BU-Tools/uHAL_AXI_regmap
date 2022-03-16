@@ -120,12 +120,12 @@ class tree(object):
                 if ("downto" in member):
                     (high, low) = re.search(r'\((.*?)\)', member).group(1).replace("downto", " ").split()
                     length = int(high)-int(low)+1
-                    outFile.write(", range : [ "+ str(length)+ " , 0 ]")
+                    outFile.write(", range : [ "+ str(length) + " - 1 , 0 ]")
 
                 outFile.write(" }\n")
 
             if current_node.isArray():
-                array_index_string = "array : [ " + str(1 + max(current_node.entries.keys()))+" , 0 ], type : "
+                array_index_string = "array : [ " + str(1 + max(current_node.entries.keys()))+" -1 , 0 ], type : "
                 outFile.write("\n- " + baseName + "_ARRAY: {" + array_index_string + baseName + "}")
 
             outFile.write("\n\n")
