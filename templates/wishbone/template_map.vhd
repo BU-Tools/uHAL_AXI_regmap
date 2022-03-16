@@ -15,8 +15,8 @@ entity {{baseName}}_wb_map is
     wb_rdata    : out std_logic_vector(31 downto 0);
     wb_ack      : out std_logic;
     wb_err      : out std_logic;
-{% if r_ops_output %}    mon         : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output %};
-    ctrl        : out {{baseName}}_Ctrl_t{% endif %}
+{% if r_ops_output %}    mon         : in  {{baseName}}_Mon_t;{% endif %}
+{% if w_ops_output %}    ctrl        : out {{baseName}}_Ctrl_t{% endif %}
     );
 end entity {{baseName}}_wb_map;
 architecture behavioral of {{baseName}}_wb_map is

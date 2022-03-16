@@ -22,7 +22,9 @@ entity {{baseName}}_map is
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
     {% if r_ops_output or bram_count %}
-    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count %};
+    Mon              : in  {{baseName}}_Mon_t{% if w_ops_output or bram_count %};{% endif %}
+    {% endif %}
+    {% if w_ops_output or bram_count %}
     Ctrl             : out {{baseName}}_Ctrl_t
     {% endif %}    
     );
