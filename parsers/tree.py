@@ -221,6 +221,7 @@ class tree(object):
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
         if (self.yml2hdl > 0):
+          if (self.yml2hdl == 2):
             with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
@@ -229,6 +230,17 @@ class tree(object):
                 outFile.write("  - wr_enable : [ type: logic ]\n")
                 outFile.write("  - address   : [ type: logic, length: %d ]\n" % addr_size)
                 outFile.write("  - wr_data   : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("\n")
+                outFile.close()
+          if (self.yml2hdl == 3):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - clk       : { type: logic }\n")
+                outFile.write("  - enable    : { type: logic }\n")
+                outFile.write("  - wr_enable : { type: logic }\n")
+                outFile.write("  - address   : { type : logic, range : [ %d -1 , 0] }\n" % addr_size)
+                outFile.write("  - wr_data   : { type : logic, range : [ %d -1 , 0] }\n" % data_size)
                 outFile.write("\n")
                 outFile.close()
 
@@ -259,13 +271,13 @@ class tree(object):
                     outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
                     outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
                     outFile.close()
-            # if (self.yml2hdl == 3):
-            #     with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
-            #         # Generate and print a VHDL record
-            #         outFile.write("- %s:\n" % fullName)
-            #         outFile.write("  - rd_data       : { 'type': 'logic', 'length': %d }\n" % data_size)
-            #         outFile.write("  - rd_data_valid : { 'type': 'logic' }\n\n")
-            #         outFile.close()
+            if (self.yml2hdl == 3):
+                with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                    # Generate and print a VHDL record
+                    outFile.write("- %s:\n" % fullName)
+                    outFile.write("  - rd_data       : { type : logic, range : [ %d -1 , 0] }\n" % data_size)
+                    outFile.write("  - rd_data_valid : { type : logic }\n\n")
+                    outFile.close()
 
         return fullName
 
