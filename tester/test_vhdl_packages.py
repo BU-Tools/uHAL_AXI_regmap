@@ -23,6 +23,7 @@ class UnitTest(unittest.TestCase):
 
     def assert_compare_dir(self, dir1, dir2):
         """Assert that two directories are identical"""
+        print("Comparing %s to %s" % (dir1, dir2))
         process = subprocess.Popen(["diff", "-r", dir1, dir2],
                                    stdout=subprocess.PIPE)
         out = process.communicate()[0].decode("utf-8")
@@ -42,7 +43,7 @@ class UnitTest(unittest.TestCase):
             self.fail(fail_msg)
         process.terminate()
 
-    def test_parser(self):
+    def test_parser(self, parser_types):
         """Test the parser and XML to VHDL generation"""
 
         for xml in ["CM_USP", "MEM_TEST"]:
@@ -64,20 +65,20 @@ class UnitTest(unittest.TestCase):
                 tests = [{"path": "CParserTest",          "parser": "simple", "template": axi},
                          {"path": "UParserTest",          "parser": "uhal",   "template": axi},
                          {"path": "CParserTest_wishbone", "parser": "simple", "template": wishbone},
-                         {"path": "UParserTest_wishbone", "parser": "simple", "template": wishbone}
-                         ]
+                         {"path": "UParserTest_wishbone", "parser": "simple", "template": wishbone}]
 
                 # Generate the VHDL Outputs
                 for test in tests:
                     for yml2hdl in [True, False]:
+                        if test["parser"] in parser_types:
 
-                        print("Tester:: %s (testxml=%s) with %s parser to %s" %
-                            (xml, test_xml_name, test["parser"], test["path"]))
+                            print("Tester:: %s (testxml=%s) with %s parser to %s" %
+                                (xml, test_xml_name, test["parser"], test["path"]))
 
-                        parse_xml(test_xml=test_xml_name, HDLPath=test["path"],
-                                parser=test["parser"],
-                                regMapTemplate=test["template"],
-                                yml2hdl=yml2hdl)
+                            parse_xml(test_xml=test_xml_name, HDLPath=test["path"],
+                                    parser=test["parser"],
+                                    regMapTemplate=test["template"],
+                                    yml2hdl=yml2hdl)
             finally:
                 os.remove(test_xml_name)
 
@@ -91,4 +92,8 @@ class UnitTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    test = UnitTest()
+    if (len(sys.argv) == 1):
+        test.test_parser(["uhal", "simple"])
+    else:
+        test.test_parser(sys.argv[1:])

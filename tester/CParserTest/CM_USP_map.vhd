@@ -10,9 +10,12 @@ use work.types.all;
 
 use work.CM_USP_Ctrl.all;
 
+
+
 entity CM_USP_map is
   generic (
-    READ_TIMEOUT     : integer := 2048
+    READ_TIMEOUT     : integer := 2048;
+    ALLOCATED_MEMORY_RANGE : integer
     );
   port (
     clk_axi          : in  std_logic;
@@ -47,6 +50,13 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  assert ((4*346) <= ALLOCATED_MEMORY_RANGE)
+    report "CM_USP: Regmap addressing range " & integer'image(4*346) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity ERROR;
+  assert ((4*346) > ALLOCATED_MEMORY_RANGE)
+    report "CM_USP: Regmap addressing range " & integer'image(4*346) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity NOTE;
+
   AXIRegBridge : entity work.axiLiteRegBlocking
     generic map (
       READ_TIMEOUT => READ_TIMEOUT
@@ -646,6 +656,7 @@ begin  -- architecture behavioral
       reg_data(25)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRE_CURSOR;
       reg_data(26)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRBS_SEL;
       reg_data(26)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(40)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).CNT.RESET_COUNTERS;
       reg_data(48)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).ENABLE_PHY_CTRL;
       reg_data(49)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).PHY_LANE_STABLE;
       reg_data(50)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).PHY_READ_TIME;
@@ -671,6 +682,7 @@ begin  -- architecture behavioral
       reg_data(57)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRE_CURSOR;
       reg_data(58)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRBS_SEL;
       reg_data(58)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(72)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).CNT.RESET_COUNTERS;
       reg_data(80)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.COUNT_16X_BAUD;
       reg_data(84)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.ERRORS.RESET;
       reg_data(90)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.SM_TIMEOUT;
@@ -703,6 +715,7 @@ begin  -- architecture behavioral
       reg_data(281)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRE_CURSOR;
       reg_data(282)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRBS_SEL;
       reg_data(282)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(296)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).CNT.RESET_COUNTERS;
       reg_data(304)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).ENABLE_PHY_CTRL;
       reg_data(305)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).PHY_LANE_STABLE;
       reg_data(306)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).PHY_READ_TIME;
@@ -728,6 +741,7 @@ begin  -- architecture behavioral
       reg_data(313)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRE_CURSOR;
       reg_data(314)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRBS_SEL;
       reg_data(314)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(328)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).CNT.RESET_COUNTERS;
       reg_data(336)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.COUNT_16X_BAUD;
       reg_data(340)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.ERRORS.RESET;
       reg_data(346)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.SM_TIMEOUT;
