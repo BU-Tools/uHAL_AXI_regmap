@@ -1,0 +1,14 @@
+name: test-regmap
+on: [push]
+jobs:
+  test_parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+      - name: "Test regmap"
+        run: |
+              pip install lxml jinja2
+              make -C tester test_simple_parser
