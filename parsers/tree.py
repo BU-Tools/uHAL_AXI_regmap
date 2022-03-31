@@ -284,7 +284,14 @@ class tree(object):
     def buildDefaultBRAM_MOSI(self, name, addr_size, data_size):
         fullName = name+"_MOSI_t"
         defaultName = "Default_"+fullName
-        with open(self.outFileName, 'a') as outFile:
+        
+        # Move default values to XXX_PKG_DEF.vhd when yml2hdl is generated
+        if (self.yml2hdl > 0):
+          outFileName = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
+        else:
+          outFileName = self.outFileName
+
+        with open(outFileName, 'a') as outFile:
             # Generate and print a VHDL record
             pad = " "*52
             outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
