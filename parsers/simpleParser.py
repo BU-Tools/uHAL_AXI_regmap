@@ -1,4 +1,13 @@
-from __future__ import print_function
+
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
+#from __future__ import print_function
 from lxml import etree
 import os
 
@@ -20,7 +29,7 @@ class ParserTree:
 
         if currentElement is None:
             if not exists(filepath):
-                raise "File "+filepath+" not found"
+                raise BaseException("File "+filepath+" not found")
             f = open(filepath, "rb")
             parser = etree.XMLParser(remove_comments=True)
             tree = etree.parse(f, parser=parser)

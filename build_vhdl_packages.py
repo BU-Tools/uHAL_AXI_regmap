@@ -1,4 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
 """
 
 The script takes an uHAL compliant XML input file
@@ -9,7 +17,7 @@ inefficient with 32b address space), so slaves will appear at many
 locations.
 
 """
-from __future__ import print_function
+#from __future__ import print_function
 from parsers import simpleParser, tree
 from tester import generate_test_xml
 import sys
@@ -135,16 +143,6 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
 def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
                         outpath, xmlpath, name, yml2hdl=0):
 
-    # global read_ops
-    # global write_ops
-    # global action_ops
-    # global readwrite_ops
-    #
-    # read_ops = dict(list())
-    # readwrite_ops = str()
-    # write_ops = dict(list())
-    # action_ops = str()
-
     if not os.path.exists(outpath):
         print("Creating "+outpath)
         try:
@@ -152,7 +150,6 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
         except:
             print("Cannot create "+outpath)
             quit()
-
     # generate unique(ish) filename for testxml
     test_xml = ""
     if len(outpath) > 0:

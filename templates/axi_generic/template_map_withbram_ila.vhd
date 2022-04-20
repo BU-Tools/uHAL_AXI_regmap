@@ -11,6 +11,10 @@ use work.types.all;
 use work.{{baseName}}_Ctrl.all;
 {{additionalLibraries}}
 entity {{baseName}}_map is
+  generic (
+    READ_TIMEOUT     : integer := 1024;
+    ALLOCATED_MEMORY_RANGE : integer
+    );
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -18,7 +22,7 @@ entity {{baseName}}_map is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-    {% if r_ops_output %}
+    {% if r_ops_output or bram_count %}
     Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count %};
     Ctrl             : out {{baseName}}_Ctrl_t
     {% endif %}    
@@ -52,9 +56,15 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  assert ((4*{{regMapSize}}) < ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity ERROR;
+  assert ((4*{{regMapSize}}) >= ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity NOTE;
   AXIRegBridge : entity work.axiLiteRegBlocking
     generic map (
-      READ_TIMEOUT => 512
+      READ_TIMEOUT => READ_TIMEOUT
       )
     port map (
       clk_axi     => clk_axi,

@@ -1,3 +1,11 @@
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
 from . import node
 import math
 import os
@@ -806,6 +814,12 @@ class tree(object):
                     others = "(others => '0')" if bits.find("downto") > 0 else "'0'"
                     self.action_ops += "Ctrl.%s <= %s;\n" % \
                         (child.getPath(includeRoot=False, expandArray=True), others)
+
+                    # default
+                    self.default_ops += "reg_data(%2d)(%s) <= CTRL_t.%s;\n" % \
+                        (child.getLocalAddress(),
+                         bits,
+                         child.getPath(includeRoot=False, expandArray=True))
 
         return
 

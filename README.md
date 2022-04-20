@@ -56,7 +56,7 @@ Generate `CM_USP_map.vhd` and `CM_USP_pkg.vhd` in `./test/simple` using the
 - with the simple parser (i.e. no uHAL)
 
 ``` sh
-./build_vhdl_packages.py -s False -x example_xml/CM_USP.xml -o test/simple  CM_USP
+./build_vhdl_packages.py -s True -x example_xml/CM_USP.xml -o test/simple  CM_USP
 ```
 
 - with the normal uHAL parser (working python uHAL must be installed)
