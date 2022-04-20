@@ -2,65 +2,114 @@
 --Modifications might be lost.
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_misc.all;
 use ieee.numeric_std.all;
+use work.AXIRegWidthPkg.all;
+use work.AXIRegPkg.all;
+use work.types.all;
+
 use work.CM_USP_Ctrl.all;
-entity CM_USP_wb_map is
-  port (
-    clk         : in  std_logic;
-    reset       : in  std_logic;
-    wb_addr     : in  std_logic_vector(31 downto 0);
-    wb_wdata    : in  std_logic_vector(31 downto 0);
-    wb_strobe   : in  std_logic;
-    wb_write    : in  std_logic;
-    wb_rdata    : out std_logic_vector(31 downto 0);
-    wb_ack      : out std_logic;
-    wb_err      : out std_logic;
-    mon         : in  CM_USP_Mon_t;
-    ctrl        : out CM_USP_Ctrl_t
+
+
+
+entity CM_USP_map is
+  generic (
+    READ_TIMEOUT     : integer := 2048;
+    ALLOCATED_MEMORY_RANGE : integer
     );
-end entity CM_USP_wb_map;
-architecture behavioral of CM_USP_wb_map is
-  signal strobe_r : std_logic := '0';
-  signal strobe_pulse : std_logic := '0';
-  type slv32_array_t  is array (integer range <>) of std_logic_vector( 31 downto 0);
-  signal localRdData : std_logic_vector (31 downto 0) := (others => '0');
-  signal localWrData : std_logic_vector (31 downto 0) := (others => '0');
+  port (
+    clk_axi          : in  std_logic;
+    reset_axi_n      : in  std_logic;
+    slave_readMOSI   : in  AXIReadMOSI;
+    slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
+    slave_writeMOSI  : in  AXIWriteMOSI;
+    slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
+    
+    Mon              : in  CM_USP_Mon_t;
+    
+    
+    Ctrl             : out CM_USP_Ctrl_t
+        
+    );
+end entity CM_USP_map;
+architecture behavioral of CM_USP_map is
+  signal localAddress       : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
+  signal localRdData        : slv_32_t;
+  signal localRdData_latch  : slv_32_t;
+  signal localWrData        : slv_32_t;
+  signal localWrEn          : std_logic;
+  signal localRdReq         : std_logic;
+  signal localRdAck         : std_logic;
+  signal regRdAck           : std_logic;
+
+  
+  
   signal reg_data :  slv32_array_t(integer range 0 to 346);
-  constant DEFAULT_REG_DATA : slv32_array_t(integer range 0 to 346) := (others => x"00000000");
+  constant Default_reg_data : slv32_array_t(integer range 0 to 346) := (others => x"00000000");
 begin  -- architecture behavioral
 
-  wb_rdata <= localRdData;
-  localWrData <= wb_wdata;
+  -------------------------------------------------------------------------------
+  -- AXI 
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+  assert ((4*346) <= ALLOCATED_MEMORY_RANGE)
+    report "CM_USP: Regmap addressing range " & integer'image(4*346) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity ERROR;
+  assert ((4*346) > ALLOCATED_MEMORY_RANGE)
+    report "CM_USP: Regmap addressing range " & integer'image(4*346) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity NOTE;
 
-  strobe_pulse <= '1' when (wb_strobe='1' and strobe_r='0') else '0';
-  process (clk) is
-  begin
-    if (rising_edge(clk)) then
-      strobe_r <= wb_strobe;
-    end if;
-  end process;
+  AXIRegBridge : entity work.axiLiteRegBlocking
+    generic map (
+      READ_TIMEOUT => READ_TIMEOUT
+      )
+    port map (
+      clk_axi     => clk_axi,
+      reset_axi_n => reset_axi_n,
+      readMOSI    => slave_readMOSI,
+      readMISO    => slave_readMISO,
+      writeMOSI   => slave_writeMOSI,
+      writeMISO   => slave_writeMISO,
+      address     => localAddress,
+      rd_data     => localRdData_latch,
+      wr_data     => localWrData,
+      write_en    => localWrEn,
+      read_req    => localRdReq,
+      read_ack    => localRdAck);
 
-  -- acknowledge
-  process (clk) is
-  begin
-    if (rising_edge(clk)) then
-      if (reset='1') then
-        wb_ack  <= '0';
-      else
-        wb_ack  <= wb_strobe;
+  -------------------------------------------------------------------------------
+  -- Record read decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+
+  latch_reads: process (clk_axi,reset_axi_n) is
+  begin  -- process latch_reads
+    if reset_axi_n = '0' then
+      localRdAck <= '0';
+    elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
+      localRdAck <= '0';
+      
+      if regRdAck = '1' then
+        localRdData_latch <= localRdData;
+        localRdAck <= '1';
+      
       end if;
     end if;
-  end process;
+  end process latch_reads;
 
-  -- reads from slave
-  reads: process (clk) is
-  begin  -- process reads
-    if rising_edge(clk) then  -- rising clock edge
+  
+  reads: process (clk_axi,reset_axi_n) is
+  begin  -- process latch_reads
+    if reset_axi_n = '0' then
+      regRdAck <= '0';
+    elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
+      regRdAck  <= '0';
       localRdData <= x"00000000";
-      wb_err <= '0';
-      if wb_strobe='1' then
-        case to_integer(unsigned(wb_addr(8 downto 0))) is
-          when 0 => --0x0
+      if localRdReq = '1' then
+        regRdAck  <= '1';
+        case to_integer(unsigned(localAddress(8 downto 0))) is
+          
+        when 0 => --0x0
           localRdData( 0)            <=  reg_data( 0)( 0);                                    --Tell CM uC to power-up
           localRdData( 1)            <=  reg_data( 0)( 1);                                    --Tell CM uC to power-up the rest of the CM
           localRdData( 2)            <=  reg_data( 0)( 2);                                    --Ignore power good from CM
@@ -445,14 +494,20 @@ begin  -- architecture behavioral
         when 346 => --0x15a
           localRdData(31 downto  0)  <=  reg_data(346)(31 downto  0);                         --Count to wait for in state machine before timing out (50Mhz clk)
 
-        when others =>
-          localRdData <= x"DEADDEAD";
-          --wb_err <= '1';
+
+          when others =>
+            regRdAck <= '0';
+            localRdData <= x"00000000";
         end case;
       end if;
     end if;
   end process reads;
 
+
+  -------------------------------------------------------------------------------
+  -- Record write decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
 
   -- Register mapping to ctrl structures
   Ctrl.CM(1).CTRL.ENABLE_UC                       <=  reg_data( 0)( 0);                
@@ -571,22 +626,138 @@ begin  -- architecture behavioral
   Ctrl.CM(2).MONITOR.SM_TIMEOUT                   <=  reg_data(346)(31 downto  0);     
 
 
-  -- writes to slave
-  reg_writes: process (clk) is
+  reg_writes: process (clk_axi, reset_axi_n) is
   begin  -- process reg_writes
-    if (rising_edge(clk)) then  -- rising clock edge
+    if reset_axi_n = '0' then                 -- asynchronous reset (active low)
+      reg_data( 0)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.ENABLE_UC;
+      reg_data( 0)( 1)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.ENABLE_PWR;
+      reg_data( 0)( 2)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.OVERRIDE_PWR_GOOD;
+      reg_data( 0)( 8)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.ERROR_STATE_RESET;
+      reg_data(16)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).ENABLE_PHY_CTRL;
+      reg_data(17)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).PHY_LANE_STABLE;
+      reg_data(18)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).PHY_READ_TIME;
+      reg_data(20)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).STATUS.INITIALIZE;
+      reg_data(21)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.EYESCAN_RESET;
+      reg_data(21)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.EYESCAN_TRIGGER;
+      reg_data(22)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.PCS_RSV_DIN;
+      reg_data(23)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.BUF_RESET;
+      reg_data(23)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.CDR_HOLD;
+      reg_data(23)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.DFE_LPM_RESET;
+      reg_data(23)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.LPM_EN;
+      reg_data(23)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PCS_RESET;
+      reg_data(23)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PMA_RESET;
+      reg_data(23)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PRBS_CNT_RST;
+      reg_data(23)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PRBS_SEL;
+      reg_data(24)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.RATE;
+      reg_data(25)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.INHIBIT;
+      reg_data(25)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PCS_RESET;
+      reg_data(25)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PMA_RESET;
+      reg_data(25)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.POLARITY;
+      reg_data(25)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.POST_CURSOR;
+      reg_data(25)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRBS_FORCE_ERR;
+      reg_data(25)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRE_CURSOR;
+      reg_data(26)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRBS_SEL;
+      reg_data(26)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(40)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).CNT.RESET_COUNTERS;
+      reg_data(48)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).ENABLE_PHY_CTRL;
+      reg_data(49)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).PHY_LANE_STABLE;
+      reg_data(50)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).PHY_READ_TIME;
+      reg_data(52)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).STATUS.INITIALIZE;
+      reg_data(53)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.EYESCAN_RESET;
+      reg_data(53)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.EYESCAN_TRIGGER;
+      reg_data(54)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.PCS_RSV_DIN;
+      reg_data(55)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.BUF_RESET;
+      reg_data(55)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.CDR_HOLD;
+      reg_data(55)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.DFE_LPM_RESET;
+      reg_data(55)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.LPM_EN;
+      reg_data(55)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PCS_RESET;
+      reg_data(55)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PMA_RESET;
+      reg_data(55)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PRBS_CNT_RST;
+      reg_data(55)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PRBS_SEL;
+      reg_data(56)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.RATE;
+      reg_data(57)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.INHIBIT;
+      reg_data(57)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PCS_RESET;
+      reg_data(57)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PMA_RESET;
+      reg_data(57)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.POLARITY;
+      reg_data(57)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.POST_CURSOR;
+      reg_data(57)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRBS_FORCE_ERR;
+      reg_data(57)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRE_CURSOR;
+      reg_data(58)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRBS_SEL;
+      reg_data(58)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(72)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).CNT.RESET_COUNTERS;
+      reg_data(80)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.COUNT_16X_BAUD;
+      reg_data(84)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.ERRORS.RESET;
+      reg_data(90)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.SM_TIMEOUT;
+      reg_data(256)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.ENABLE_UC;
+      reg_data(256)( 1)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.ENABLE_PWR;
+      reg_data(256)( 2)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.OVERRIDE_PWR_GOOD;
+      reg_data(256)( 8)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.ERROR_STATE_RESET;
+      reg_data(272)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).ENABLE_PHY_CTRL;
+      reg_data(273)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).PHY_LANE_STABLE;
+      reg_data(274)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).PHY_READ_TIME;
+      reg_data(276)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).STATUS.INITIALIZE;
+      reg_data(277)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.EYESCAN_RESET;
+      reg_data(277)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.EYESCAN_TRIGGER;
+      reg_data(278)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.PCS_RSV_DIN;
+      reg_data(279)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.BUF_RESET;
+      reg_data(279)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.CDR_HOLD;
+      reg_data(279)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.DFE_LPM_RESET;
+      reg_data(279)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.LPM_EN;
+      reg_data(279)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PCS_RESET;
+      reg_data(279)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PMA_RESET;
+      reg_data(279)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PRBS_CNT_RST;
+      reg_data(279)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PRBS_SEL;
+      reg_data(280)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.RATE;
+      reg_data(281)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.INHIBIT;
+      reg_data(281)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PCS_RESET;
+      reg_data(281)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PMA_RESET;
+      reg_data(281)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.POLARITY;
+      reg_data(281)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.POST_CURSOR;
+      reg_data(281)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRBS_FORCE_ERR;
+      reg_data(281)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRE_CURSOR;
+      reg_data(282)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRBS_SEL;
+      reg_data(282)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(296)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).CNT.RESET_COUNTERS;
+      reg_data(304)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).ENABLE_PHY_CTRL;
+      reg_data(305)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).PHY_LANE_STABLE;
+      reg_data(306)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).PHY_READ_TIME;
+      reg_data(308)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).STATUS.INITIALIZE;
+      reg_data(309)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.EYESCAN_RESET;
+      reg_data(309)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.EYESCAN_TRIGGER;
+      reg_data(310)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.PCS_RSV_DIN;
+      reg_data(311)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.BUF_RESET;
+      reg_data(311)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.CDR_HOLD;
+      reg_data(311)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.DFE_LPM_RESET;
+      reg_data(311)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.LPM_EN;
+      reg_data(311)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PCS_RESET;
+      reg_data(311)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PMA_RESET;
+      reg_data(311)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PRBS_CNT_RST;
+      reg_data(311)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PRBS_SEL;
+      reg_data(312)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.RATE;
+      reg_data(313)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.INHIBIT;
+      reg_data(313)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PCS_RESET;
+      reg_data(313)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PMA_RESET;
+      reg_data(313)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.POLARITY;
+      reg_data(313)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.POST_CURSOR;
+      reg_data(313)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRBS_FORCE_ERR;
+      reg_data(313)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRE_CURSOR;
+      reg_data(314)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRBS_SEL;
+      reg_data(314)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.DIFF_CTRL;
+      reg_data(328)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).CNT.RESET_COUNTERS;
+      reg_data(336)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.COUNT_16X_BAUD;
+      reg_data(340)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.ERRORS.RESET;
+      reg_data(346)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.SM_TIMEOUT;
 
-      -- action resets
+    elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
       Ctrl.CM(1).C2C(1).CNT.RESET_COUNTERS <= '0';
       Ctrl.CM(1).C2C(2).CNT.RESET_COUNTERS <= '0';
       Ctrl.CM(2).C2C(1).CNT.RESET_COUNTERS <= '0';
       Ctrl.CM(2).C2C(2).CNT.RESET_COUNTERS <= '0';
       
 
-
-      -- Write on strobe=write=1
-      if strobe_pulse='1' and wb_write = '1' then
-        case to_integer(unsigned(wb_addr(8 downto 0))) is
+      
+      if localWrEn = '1' then
+        case to_integer(unsigned(localAddress(8 downto 0))) is
         when 0 => --0x0
           reg_data( 0)( 0)                      <=  localWrData( 0);                --Tell CM uC to power-up
           reg_data( 0)( 1)                      <=  localWrData( 1);                --Tell CM uC to power-up the rest of the CM
@@ -758,135 +929,17 @@ begin  -- architecture behavioral
         when 346 => --0x15a
           reg_data(346)(31 downto  0)           <=  localWrData(31 downto  0);      --Count to wait for in state machine before timing out (50Mhz clk)
 
-        when others => null;
-
+          when others => null;
         end case;
-      end if; -- write
-
-      -- synchronous reset (active high)
-      if reset = '1' then
-      reg_data( 0)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.ENABLE_UC;
-      reg_data( 0)( 1)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.ENABLE_PWR;
-      reg_data( 0)( 2)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.OVERRIDE_PWR_GOOD;
-      reg_data( 0)( 8)  <= DEFAULT_CM_USP_CTRL_t.CM(1).CTRL.ERROR_STATE_RESET;
-      reg_data(16)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).ENABLE_PHY_CTRL;
-      reg_data(17)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).PHY_LANE_STABLE;
-      reg_data(18)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).PHY_READ_TIME;
-      reg_data(20)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).STATUS.INITIALIZE;
-      reg_data(21)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.EYESCAN_RESET;
-      reg_data(21)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.EYESCAN_TRIGGER;
-      reg_data(22)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.PCS_RSV_DIN;
-      reg_data(23)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.BUF_RESET;
-      reg_data(23)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.CDR_HOLD;
-      reg_data(23)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.DFE_LPM_RESET;
-      reg_data(23)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.LPM_EN;
-      reg_data(23)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PCS_RESET;
-      reg_data(23)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PMA_RESET;
-      reg_data(23)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PRBS_CNT_RST;
-      reg_data(23)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.PRBS_SEL;
-      reg_data(24)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.RX.RATE;
-      reg_data(25)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.INHIBIT;
-      reg_data(25)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PCS_RESET;
-      reg_data(25)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PMA_RESET;
-      reg_data(25)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.POLARITY;
-      reg_data(25)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.POST_CURSOR;
-      reg_data(25)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRBS_FORCE_ERR;
-      reg_data(25)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRE_CURSOR;
-      reg_data(26)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.PRBS_SEL;
-      reg_data(26)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).LINK_DEBUG.TX.DIFF_CTRL;
-      reg_data(40)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(1).CNT.RESET_COUNTERS;
-      reg_data(48)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).ENABLE_PHY_CTRL;
-      reg_data(49)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).PHY_LANE_STABLE;
-      reg_data(50)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).PHY_READ_TIME;
-      reg_data(52)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).STATUS.INITIALIZE;
-      reg_data(53)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.EYESCAN_RESET;
-      reg_data(53)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.EYESCAN_TRIGGER;
-      reg_data(54)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.PCS_RSV_DIN;
-      reg_data(55)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.BUF_RESET;
-      reg_data(55)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.CDR_HOLD;
-      reg_data(55)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.DFE_LPM_RESET;
-      reg_data(55)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.LPM_EN;
-      reg_data(55)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PCS_RESET;
-      reg_data(55)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PMA_RESET;
-      reg_data(55)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PRBS_CNT_RST;
-      reg_data(55)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.PRBS_SEL;
-      reg_data(56)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.RX.RATE;
-      reg_data(57)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.INHIBIT;
-      reg_data(57)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PCS_RESET;
-      reg_data(57)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PMA_RESET;
-      reg_data(57)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.POLARITY;
-      reg_data(57)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.POST_CURSOR;
-      reg_data(57)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRBS_FORCE_ERR;
-      reg_data(57)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRE_CURSOR;
-      reg_data(58)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.PRBS_SEL;
-      reg_data(58)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).LINK_DEBUG.TX.DIFF_CTRL;
-      reg_data(72)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).C2C(2).CNT.RESET_COUNTERS;
-      reg_data(80)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.COUNT_16X_BAUD;
-      reg_data(84)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.ERRORS.RESET;
-      reg_data(90)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(1).MONITOR.SM_TIMEOUT;
-      reg_data(256)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.ENABLE_UC;
-      reg_data(256)( 1)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.ENABLE_PWR;
-      reg_data(256)( 2)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.OVERRIDE_PWR_GOOD;
-      reg_data(256)( 8)  <= DEFAULT_CM_USP_CTRL_t.CM(2).CTRL.ERROR_STATE_RESET;
-      reg_data(272)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).ENABLE_PHY_CTRL;
-      reg_data(273)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).PHY_LANE_STABLE;
-      reg_data(274)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).PHY_READ_TIME;
-      reg_data(276)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).STATUS.INITIALIZE;
-      reg_data(277)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.EYESCAN_RESET;
-      reg_data(277)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.EYESCAN_TRIGGER;
-      reg_data(278)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.PCS_RSV_DIN;
-      reg_data(279)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.BUF_RESET;
-      reg_data(279)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.CDR_HOLD;
-      reg_data(279)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.DFE_LPM_RESET;
-      reg_data(279)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.LPM_EN;
-      reg_data(279)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PCS_RESET;
-      reg_data(279)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PMA_RESET;
-      reg_data(279)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PRBS_CNT_RST;
-      reg_data(279)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.PRBS_SEL;
-      reg_data(280)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.RX.RATE;
-      reg_data(281)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.INHIBIT;
-      reg_data(281)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PCS_RESET;
-      reg_data(281)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PMA_RESET;
-      reg_data(281)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.POLARITY;
-      reg_data(281)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.POST_CURSOR;
-      reg_data(281)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRBS_FORCE_ERR;
-      reg_data(281)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRE_CURSOR;
-      reg_data(282)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.PRBS_SEL;
-      reg_data(282)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).LINK_DEBUG.TX.DIFF_CTRL;
-      reg_data(296)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(1).CNT.RESET_COUNTERS;
-      reg_data(304)(11)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).ENABLE_PHY_CTRL;
-      reg_data(305)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).PHY_LANE_STABLE;
-      reg_data(306)(23 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).PHY_READ_TIME;
-      reg_data(308)( 5)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).STATUS.INITIALIZE;
-      reg_data(309)(22)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.EYESCAN_RESET;
-      reg_data(309)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.EYESCAN_TRIGGER;
-      reg_data(310)(15 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.PCS_RSV_DIN;
-      reg_data(311)(12)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.BUF_RESET;
-      reg_data(311)(13)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.CDR_HOLD;
-      reg_data(311)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.DFE_LPM_RESET;
-      reg_data(311)(18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.LPM_EN;
-      reg_data(311)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PCS_RESET;
-      reg_data(311)(24)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PMA_RESET;
-      reg_data(311)(25)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PRBS_CNT_RST;
-      reg_data(311)(29 downto 26)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.PRBS_SEL;
-      reg_data(312)( 2 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.RX.RATE;
-      reg_data(313)( 7)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.INHIBIT;
-      reg_data(313)(15)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PCS_RESET;
-      reg_data(313)(16)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PMA_RESET;
-      reg_data(313)(17)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.POLARITY;
-      reg_data(313)(22 downto 18)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.POST_CURSOR;
-      reg_data(313)(23)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRBS_FORCE_ERR;
-      reg_data(313)(31 downto 27)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRE_CURSOR;
-      reg_data(314)( 3 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.PRBS_SEL;
-      reg_data(314)( 8 downto  4)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).LINK_DEBUG.TX.DIFF_CTRL;
-      reg_data(328)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).C2C(2).CNT.RESET_COUNTERS;
-      reg_data(336)( 7 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.COUNT_16X_BAUD;
-      reg_data(340)( 0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.ERRORS.RESET;
-      reg_data(346)(31 downto  0)  <= DEFAULT_CM_USP_CTRL_t.CM(2).MONITOR.SM_TIMEOUT;
-
-      end if; -- reset
-    end if; -- clk
+      end if;
+    end if;
   end process reg_writes;
 
 
+
+
+
+
+
+  
 end architecture behavioral;
