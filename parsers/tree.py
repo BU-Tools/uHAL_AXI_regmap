@@ -75,7 +75,7 @@ class tree(object):
 
             for memberName, member in sorted_members:
 
-                outFile.write("  - " + memberName + " : [type': ")
+                outFile.write("  - " + memberName + " : [ type: ")
 
                 # rename types from VHDL to yml2hdl
                 # (following system verilog everything is a logic type in yml2hdl)
