@@ -60,7 +60,11 @@ class UnitTest(unittest.TestCase):
                                                     test_xml_name)
 
                 wishbone = "../templates/wishbone/template_map.vhd"
-                axi = "../templates/axi_generic/template_map_withbram.vhd"
+
+                if xml == "CM_USP":
+                    axi = "../templates/axi_generic/template_map.vhd"
+                if xml == "MEM_TEST":
+                    axi = "../templates/axi_generic/template_map_withbram.vhd"
 
                 tests = [{"path": "CParserTest",          "parser": "simple", "template": axi},
                          {"path": "UParserTest",          "parser": "uhal",   "template": axi},

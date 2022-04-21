@@ -2,7 +2,6 @@
 --Modifications might be lost.
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_misc.all;
 use ieee.numeric_std.all;
 use work.AXIRegWidthPkg.all;
 use work.AXIRegPkg.all;
@@ -14,7 +13,6 @@ use work.CM_USP_Ctrl.all;
 
 entity CM_USP_map is
   generic (
-    READ_TIMEOUT     : integer := 2048;
     ALLOCATED_MEMORY_RANGE : integer
     );
   port (
@@ -24,12 +22,8 @@ entity CM_USP_map is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-    
     Mon              : in  CM_USP_Mon_t;
-    
-    
     Ctrl             : out CM_USP_Ctrl_t
-        
     );
 end entity CM_USP_map;
 architecture behavioral of CM_USP_map is
@@ -40,10 +34,8 @@ architecture behavioral of CM_USP_map is
   signal localWrEn          : std_logic;
   signal localRdReq         : std_logic;
   signal localRdAck         : std_logic;
-  signal regRdAck           : std_logic;
 
-  
-  
+
   signal reg_data :  slv32_array_t(integer range 0 to 346);
   constant Default_reg_data : slv32_array_t(integer range 0 to 346) := (others => x"00000000");
 begin  -- architecture behavioral
@@ -59,10 +51,7 @@ begin  -- architecture behavioral
     report "CM_USP: Regmap addressing range " & integer'image(4*346) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
   severity NOTE;
 
-  AXIRegBridge : entity work.axiLiteRegBlocking
-    generic map (
-      READ_TIMEOUT => READ_TIMEOUT
-      )
+  AXIRegBridge : entity work.axiLiteReg
     port map (
       clk_axi     => clk_axi,
       reset_axi_n => reset_axi_n,
@@ -77,38 +66,22 @@ begin  -- architecture behavioral
       read_req    => localRdReq,
       read_ack    => localRdAck);
 
-  -------------------------------------------------------------------------------
-  -- Record read decoding
-  -------------------------------------------------------------------------------
-  -------------------------------------------------------------------------------
-
-  latch_reads: process (clk_axi,reset_axi_n) is
+  latch_reads: process (clk_axi) is
   begin  -- process latch_reads
-    if reset_axi_n = '0' then
-      localRdAck <= '0';
-    elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
-      localRdAck <= '0';
-      
-      if regRdAck = '1' then
-        localRdData_latch <= localRdData;
-        localRdAck <= '1';
-      
+    if clk_axi'event and clk_axi = '1' then  -- rising clock edge
+      if localRdReq = '1' then
+        localRdData_latch <= localRdData;        
       end if;
     end if;
   end process latch_reads;
+  reads: process (localRdReq,localAddress,reg_data) is
+  begin  -- process reads
+    localRdAck  <= '0';
+    localRdData <= x"00000000";
+    if localRdReq = '1' then
+      localRdAck  <= '1';
+      case to_integer(unsigned(localAddress(8 downto 0))) is
 
-  
-  reads: process (clk_axi,reset_axi_n) is
-  begin  -- process latch_reads
-    if reset_axi_n = '0' then
-      regRdAck <= '0';
-    elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
-      regRdAck  <= '0';
-      localRdData <= x"00000000";
-      if localRdReq = '1' then
-        regRdAck  <= '1';
-        case to_integer(unsigned(localAddress(8 downto 0))) is
-          
         when 0 => --0x0
           localRdData( 0)            <=  reg_data( 0)( 0);                                    --Tell CM uC to power-up
           localRdData( 1)            <=  reg_data( 0)( 1);                                    --Tell CM uC to power-up the rest of the CM
@@ -495,19 +468,14 @@ begin  -- architecture behavioral
           localRdData(31 downto  0)  <=  reg_data(346)(31 downto  0);                         --Count to wait for in state machine before timing out (50Mhz clk)
 
 
-          when others =>
-            regRdAck <= '0';
-            localRdData <= x"00000000";
-        end case;
-      end if;
+        when others =>
+          localRdData <= x"00000000";
+      end case;
     end if;
   end process reads;
 
 
-  -------------------------------------------------------------------------------
-  -- Record write decoding
-  -------------------------------------------------------------------------------
-  -------------------------------------------------------------------------------
+
 
   -- Register mapping to ctrl structures
   Ctrl.CM(1).CTRL.ENABLE_UC                       <=  reg_data( 0)( 0);                
@@ -936,10 +904,4 @@ begin  -- architecture behavioral
   end process reg_writes;
 
 
-
-
-
-
-
-  
 end architecture behavioral;
