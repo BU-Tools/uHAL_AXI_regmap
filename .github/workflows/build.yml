@@ -16,6 +16,18 @@ jobs:
 
               LD_LIBRARY_PATH=/opt/cactus/lib:$LD_LIBRARY_PATH make -C tester test
 
+  test_parser_python_3p6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.6'
+      - name: "Test regmap"
+        run: |
+              pip install lxml jinja2
+              make -C tester test_simple_parser
+
   test_parser_python_3p8:
     runs-on: ubuntu-latest
     steps:
