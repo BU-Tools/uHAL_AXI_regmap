@@ -141,7 +141,7 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
 
 
 def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
-                        outpath, xmlpath, name, yml2hdl=0):
+                        outpath, xmlpath, name, yml2hdl=0, fallback=False):
 
     if not os.path.exists(outpath):
         print("Creating "+outpath)
@@ -163,8 +163,12 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
         print("Using Standalone parser")
         parser = "simple"
     else:
-        print("Using uHAL parser")
-        parser = "uhal"
+        if (fallback and not uhalFlag):
+            print("uHAL parser selected but not available... falling back to simple parser")
+            parser = "simple"
+        else:
+            print("Using uHAL parser")
+            parser = "uhal"
 
     parse_xml(test_xml, outpath, mapTemplate, pkgTemplate, yml2hdl=yml2hdl,
               parser=parser, verbose=verbose, debug=debug)
@@ -177,6 +181,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Generate VHDL decoder from XML address table")
     parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
+    parser.add_argument("--fallback","-f",type=str2bool,help="Allow fallback to the simple parser if uHAL is not available",required=False,default=False)
     parser.add_argument("--verbose","-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
     parser.add_argument("--debug","-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
     parser.add_argument("--yaml","-y",type=int,help="Enable YAML output",required=False,default=0)
@@ -196,5 +201,6 @@ if __name__ == '__main__':
                         args.outpath,
                         args.xmlpath,
                         args.name,
-                        args.yaml
+                        args.yaml,
+                        args.fallback
                         )
