@@ -1,0 +1,42 @@
+name: test-regmap
+on: [push]
+jobs:
+  test_parser:
+    runs-on: ubuntu-latest
+    container: cern/cc7-base
+    steps:
+      - uses: actions/checkout@v1
+      - name: "Test regmap"
+        run: |
+              curl https://ipbus.web.cern.ch/doc/user/html/_downloads/ipbus-sw.centos7.x86_64.repo -o /etc/yum.repos.d/ipbus-sw.repo
+              yum clean all
+              yum -y install cactuscore-uhal-uhal cactuscore-uhal-python36 make git
+
+              pip3 install lxml jinja2
+
+              LD_LIBRARY_PATH=/opt/cactus/lib:$LD_LIBRARY_PATH make -C tester test
+
+  test_parser_python_3p6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.6'
+      - name: "Test regmap"
+        run: |
+              pip install lxml jinja2
+              make -C tester test_simple_parser
+
+  test_parser_python_3p8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+      - name: "Test regmap"
+        run: |
+              pip install lxml jinja2
+              make -C tester test_simple_parser
+
