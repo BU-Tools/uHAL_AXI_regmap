@@ -226,12 +226,11 @@ class node(object):
 
     @staticmethod
     def readpermission(permission):
-#        import uhal
-        if permission == uhal.NodePermission.READ:
+        if permission == 0x1: #uhal.NodePermission.READ:
             return 'r'
-        elif permission == uhal.NodePermission.READWRITE:
+        elif permission == 0x3: #uhal.NodePermission.READWRITE:
             return 'rw'
-        elif permission == uhal.NodePermission.WRITE:
+        elif permission == 0x2: #uhal.NodePermission.WRITE:
             return 'w'
         else:
             return ""

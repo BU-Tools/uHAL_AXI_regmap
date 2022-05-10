@@ -15,10 +15,7 @@ import datetime
 
 from jinja2 import Template
 from collections import OrderedDict
-try:
-    from StringIO import StringIO  # for Python 2
-except ImportError:
-    from io import StringIO  # for Python 3
+from io import StringIO  # for Python 3
 
 
 class tree(object):
