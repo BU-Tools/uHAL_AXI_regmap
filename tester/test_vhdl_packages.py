@@ -78,7 +78,8 @@ class UnitTest(unittest.TestCase):
                             parse_xml(test_xml=test_xml_name, HDLPath=test["path"],
                                     parser=test["parser"],
                                     regMapTemplate=test["template"],
-                                    yml2hdl=yml2hdl)
+                                      outputFormat=1,
+                                      outputVersion=2)
             finally:
                 os.remove(test_xml_name)
 

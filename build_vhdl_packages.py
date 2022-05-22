@@ -58,7 +58,7 @@ def findArrayType(n):
 
 
 def useSimpleParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
-                    verbose=False, debug=False, yml2hdl=False):
+                    verbose=False, debug=False, outputFormat=0, outputVersion=1):
 
     root = simpleParser.ParserNode(name='Root')
     cTree = simpleParser.ParserTree(root)
@@ -73,7 +73,7 @@ def useSimpleParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
     for child in root.getChildren():
         child.setParent(None)
         print("Generating:", child.getName())
-        mytree = tree.tree(child, yml2hdl=yml2hdl)
+        mytree = tree.tree(child, outputFormat=outputFormat,outputVersion=outputVersion)
         mytree.generatePkg()
         mytree.generateRegMap(regMapTemplate=regMapTemplate)
         child.setParent(root)
@@ -82,8 +82,8 @@ def useSimpleParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
     os.chdir(cwd)
 
 
-def parse_xml(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
-              parser="simple", verbose=False, debug=False, yml2hdl=False):
+def parse_xml(test_xml, HDLPath, regMapTemplate, pkgTemplate="",parser="simple", 
+              verbose=False, outputFormat=0, outputVersion=1, debug=False):
     if (parser == "simple"):
         func = useSimpleParser
     elif (parser == "uhal"):
@@ -93,11 +93,11 @@ def parse_xml(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
         sys.exit(1)
 
     func(test_xml, HDLPath, regMapTemplate, pkgTemplate,
-         verbose, debug, yml2hdl)
+         verbose, debug, outputFormat=outputFormat,outputVersion=outputVersion)
 
 
 def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
-                  verbose=False, debug=False, yml2hdl=False):
+                  verbose=False, debug=False, outputFormat=0, outputVersion=1):
 
     # configure logger
     global log
@@ -130,7 +130,8 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
 
     for i in device.getNodes():
         if i.count('.') == 0:
-            mytree = tree.tree(device.getNode(i), log, yml2hdl=yml2hdl)
+            mytree = tree.tree(device.getNode(i), log,
+                               outputFormat=ouputFormat,outputVersion=outputVersion)
             mytree.generatePkg()
             mytree.generateRegMap(regMapTemplate=regMapTemplate)
 
@@ -141,7 +142,7 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
 
 
 def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
-                        outpath, xmlpath, name, yml2hdl=0, fallback=False):
+                        outpath, xmlpath, name, outputFormat=0, outputVersion=1, fallback=False):
 
     if not os.path.exists(outpath):
         print("Creating "+outpath)
@@ -170,7 +171,7 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
             print("Using uHAL parser")
             parser = "uhal"
 
-    parse_xml(test_xml, outpath, mapTemplate, pkgTemplate, yml2hdl=yml2hdl,
+    parse_xml(test_xml, outpath, mapTemplate, pkgTemplate, outputFormat=outputFormat,outputVersion=outputVersion,
               parser=parser, verbose=verbose, debug=debug)
 
     # delete test file
@@ -180,19 +181,20 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Generate VHDL decoder from XML address table")
-    parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
-    parser.add_argument("--fallback","-f",type=str2bool,help="Allow fallback to the simple parser if uHAL is not available",required=False,default=False)
-    parser.add_argument("--verbose","-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
-    parser.add_argument("--debug","-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
-    parser.add_argument("--yaml","-y",type=int,help="Enable YAML output",required=False,default=0)
-    parser.add_argument("--mapTemplate","-m",help="Template to use for decoder map file",required=False,default="templates/axi_generic/template_map.vhd")
-    parser.add_argument("--pkgTemplate","-p",help="Template to use for PKG file (not supported yet)",required=False)
-    parser.add_argument("--outpath","-o",help="output path to use",required=False,default="autogen")
-    parser.add_argument("--xmlpath","-x",help="Path where first xml file is found and its included xml files",required=False,default="")
+    parser.add_argument("--simple"       ,"-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
+    parser.add_argument("--fallback"     ,"-f",type=str2bool,help="Allow fallback to the simple parser if uHAL is not available",required=False,default=False)
+    parser.add_argument("--verbose"      ,"-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
+    parser.add_argument("--debug"        ,"-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
+    parser.add_argument("--format"       ,"-t",type=int,help="Select output format 0=HDL,1=YAML,2=CPP",required=False,default=0)
+    parser.add_argument("--formatVersion","-n",type=int,help="Select output format version",required=False,default=1)
+    parser.add_argument("--mapTemplate"  ,"-m",help="Template to use for decoder map file",required=False,default="templates/axi_generic/template_map.vhd")
+    parser.add_argument("--pkgTemplate"  ,"-p",help="Template to use for PKG file (not supported yet)",required=False)
+    parser.add_argument("--outpath"      ,"-o",help="output path to use",required=False,default="autogen")
+    parser.add_argument("--xmlpath"      ,"-x",help="Path where first xml file is found and its included xml files",required=False,default="")
     parser.add_argument("name",help="base name of decoder xml file (no .xml)")
 
     args = parser.parse_args()
-
+    
     build_vhdl_packages(args.simple,
                         args.verbose,
                         args.debug,
@@ -201,6 +203,7 @@ if __name__ == '__main__':
                         args.outpath,
                         args.xmlpath,
                         args.name,
-                        args.yaml,
+                        args.format,
+                        args.formatVersion,
                         args.fallback
                         )

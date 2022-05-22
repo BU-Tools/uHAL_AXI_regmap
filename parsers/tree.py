@@ -17,9 +17,14 @@ from jinja2 import Template
 from collections import OrderedDict
 from io import StringIO  # for Python 3
 
+FORMAT_HDL = 0
+FORMAT_YAML = 1
+FORMAT_CPP  = 2
+
+INVALID_VERSION=0
 
 class tree(object):
-    def __init__(self, root, logger=None, debug=False, yml2hdl=0):
+    def __init__(self, root, logger=None, debug=False, outputFormat=FORMAT_HDL, outputVersion=INVALID_VERSION):
         self.read_ops = OrderedDict(list())
         self.readwrite_ops = str()
         self.write_ops = OrderedDict(list())
@@ -34,26 +39,11 @@ class tree(object):
         self.bram_max_addr = int(0)
 
         # package write selection
-        # version of yml2hdl tool type yml output
-        # 0=disable yml output
-        # 1=yml2hdl v1
-        # 2=yml2hdl v2
-        # etc...
-        #
-
-        self.yml2hdl = yml2hdl
-
+        self.outputType = (outputFormat,outputVersion)
+        
         # setup logger
         self.log = logger
-        # if not self.log:
-        #     self.log = logging.getLogger("main")
-        #     formatter = logging.Formatter(
-        #         '%(name)s %(levelname)s: %(message)s')
-        #     handler = logging.StreamHandler(sys.stdout)
-        #     handler.setFormatter(formatter)
-        #     self.log.addHandler(handler)
-        #     self.log.setLevel(logging.WARNING)
-        #     uhal.setLogLevelTo(uhal.LogLevel.WARNING)
+
         # read the root node
         self.root = node.node(root, baseAddress=0, tree=self)
 
@@ -140,6 +130,126 @@ class tree(object):
         # TODO: return value here?
         return
 
+    def generateCPP(self, baseName, current_node, members, description):
+        #for now, replace the filename vhd ending with hxx
+        hxxFilename = self.outFileName.replace(".vhd", ".hxx")
+
+        
+        with open(hxxFilename, 'a') as outFile:
+            # Generate a c++ class
+            className=baseName
+            outFile.write("//==============================================================================\n")
+            outFile.write("//RegClass: %s\n" % (className))
+            outFile.write("//==============================================================================\n")
+            outFile.write("class %s : public RegOffset{\n" %(className))
+
+            constructor=[]
+            publicMembers=[]
+            publicDataMembers=[]
+            privateMembers=[]
+            privateDataMembers=[]
+
+            
+            constructor.append("  %s::%s(uint32_t offset):RegOffset(offset){\n" %(className,className))
+            
+            for child in current_node.children:                
+                if child.isMem:
+                    #This is a memory node, so we just need to add an index to the read (no masks or shifts)
+                    #allow the user to access the size
+                    publicMembers.append("  size_t Get%sSize(){\n" % (child.id))
+                    publicMembers.append("    return %u;\n"  % (child.size))
+                    publicMembers.append("  };\n")
+                    #access
+                    publicMembers.append("  uint32_t Get%s(size_t i){\n" % (child.id)) 
+                    #compute address offset, mask, and bitshift                
+                    publicMembers.append("    return Xil_In32(baseAddr+0x%08X+(sizeof(uint32_t)*i));\n" % (child.address))
+                    publicMembers.append("  };\n")
+                    
+                elif len(child.children) != 0:
+                    childClassName=baseName+"_"+child.id
+                    # Since this is a complex type (another class), we make a private memeber that contains the
+                    # class or array of classes
+                    if child.isArray():
+#                        array_size= max(child.entries.keys())- min(child.entries.keys()) + 1
+                        privateDataMembers.append("  std::vector<%s> %s;\n" %  (childClassName,child.id))
+                        for array_id , array_child in child.entries.items():
+                            constructor.append("    %s.push_back(baseAddr + 0x%08X);\n" % (child.id,array_child.address))
+                    else:
+                        privateDataMembers.append("  %s %s;\n" % (childClassName,child.id))
+                        constructor.append("    %s = %s(baseAddr + 0x%08X);\n" % (child.id,childClassName,child.address))
+
+                    #Get functions
+                    if child.isArray():
+                        publicMembers.append("  %s * Get%s(size_t i){\n" % (childClassName,child.id))
+                        publicMembers.append("    return &(%s[i]);\n" %(child.id))
+                        publicMembers.append("  };\n")
+                        #get size
+                        publicMembers.append("  size_t Get%sSize(){\n" % (child.id))
+                        publicMembers.append("    return %s.size();\n" %(child.id))
+                        publicMembers.append("  };\n")
+
+                    else:
+                        publicMembers.append("  %s * Get%s(){\n" % (childClassName,child.id))
+                        publicMembers.append("    return &%s;\n" %(child.id))
+                        publicMembers.append("  };\n")
+                else:
+                    #this is a normal node
+
+                    #compute address offset, mask, and bitshift                
+                    mask=child.mask
+                    bitshift   =0
+                    while not (mask & 0x1):
+                        bitshift=bitshift+1
+                        mask = mask>>1
+                    #write the Read function if necessary
+                    if child.permission == "r":
+                        publicMembers.append("  uint32_t Read%s()" % (child.id))
+                        if len(child.description) > 0:
+                            publicMembers.append("{ // %s\n" %(child.description))
+                        else:
+                            publicMembers.append("{\n")
+                        publicMembers.append("     return ((0x%08X & Xil_In32(baseAddr+0x%08X))) >> %d;\n  }\n" %(child.mask,child.address,bitshift))
+                    #write the normal Write function if necessary
+                    if child.permission == "rw":
+                        #normal rw register
+                        publicMembers.append("  void Write%s(uint32_t val)" % (child.id))
+                        if len(child.description) > 0:
+                            publicMembers.append("{ // %s\n" %(child.description))
+                        else:
+                            publicMembers.append("{\n")
+                        publicMembers.append("     uint32_t data = Xil_In32(baseAddr+0x%08X);\n" %(child.address))
+                        publicMembers.append("     data &= ~0x%08X;\n" % (mask))
+                        publicMembers.append("     data |= ((val & 0x%08X)<< %d);\n" %(mask,bitshift))
+                        publicMembers.append("     Xil_Out32(baseAddr+0x%08X,data);\n" %(child.address))
+                        publicMembers.append("  };\n")
+                    elif child.permission == "w":
+                        #special action write only registers
+                        publicMembers.append("  void Write%s()" % (child.id))
+                        if len(child.description) > 0:
+                            publicMembers.append("{ // %s\n" %(child.description))
+                        else:
+                            publicMembers.append("{\n")
+                        publicMembers.append("     uint32_t data = Xil_In32(baseAddr+0x%08X);\n" %(child.address))
+                        publicMembers.append("     data &= ~0x%08X;\n" % (mask))
+                        publicMembers.append("     data |= (0x%08X<< %d);\n" %(mask,bitshift))
+                        publicMembers.append("     Xil_Out32(baseAddr+0x%08X,data);\n" %(child.address))
+                        publicMembers.append("  };\n")
+                
+            constructor.append("  };\n")
+            outFile.write(''.join(constructor))
+            outFile.write("public:\n")
+            outFile.write(''.join(publicDataMembers))
+            outFile.write(''.join(publicMembers))
+            if (len(privateDataMembers) > 0) or (len(privateMembers) > 0):
+                outFile.write("private:\n")
+                outFile.write(''.join(privateDataMembers))
+                outFile.write(''.join(privateMembers))
+            outFile.write("};\n\n\n")
+            outFile.close()
+        # TODO: return value here?
+        return
+
+    
     def generateDefaultRecord(self, baseName, defaults, outFileName, ctrl_file_lib="ctrl_lib"):
 
         with open(outFileName, 'a') as outfile:
@@ -185,7 +295,7 @@ class tree(object):
             outFile.write("    wr_data   : std_logic_vector(%d-1 downto 0);\n" % data_size)
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
-        if (self.yml2hdl > 0):
+        if (self.outputType[0] == FORMAT_YAML):
             with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
@@ -209,7 +319,7 @@ class tree(object):
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
 
-        if (self.yml2hdl > 0):
+        if (self.outputType[0] == FORMAT_YAML):
             with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
@@ -407,45 +517,51 @@ class tree(object):
 
         ret = {}
 
-        if package_mon_entries:
+        #set generate function based on output format
+        if self.outputType[0] == FORMAT_HDL:
+            outputFunction = self.generateRecord
+        elif self.outputType[0] == FORMAT_YAML:
+            outputFunction = self.generate_yaml
+        elif self.outputType[0] == FORMAT_CPP:
+            outputFunction = self.generateCPP
+        else:
+            print(self.outputType)
+            raise BaseException("Unknown output type: %d" %(self.outputType[0]));
+            
+        #set the baseName for this record
+        baseName = current_node.getPath(expandArray=False).replace('.', '_')
 
-            baseName = current_node.getPath(
-                expandArray=False).replace('.', '_')+'_MON_t'
 
-            if self.yml2hdl == 0:
-                func = self.generateRecord
-            if self.yml2hdl == 1 or self.yml2hdl == 2:
-                func = self.generate_yaml
-
-            ret['mon'] = func(baseName,
-                              current_node,
-                              package_mon_entries,
-                              package_description)
-
-        if package_ctrl_entries:
-
-            baseName = current_node.getPath(
-                expandArray=False).replace('.', '_')+'_CTRL_t'
-
-            if self.yml2hdl == 0:
-                func = self.generateRecord
-            if self.yml2hdl == 1 or self.yml2hdl == 2:
-                func = self.generate_yaml
-
-            ret['ctrl'] = func(baseName,
-                               current_node,
-                               package_ctrl_entries,
-                               package_description)
-
-            def_pkg_name = self.outFileName
-            if self.yml2hdl > 0:
-                def_pkg_name = def_pkg_name.replace("PKG.vhd", "PKG_DEF.vhd")
-
-            ret["ctrl_default"] = \
-                self.generateDefaultRecord(baseName,
-                                           package_ctrl_entry_defaults,
-                                           def_pkg_name)
-
+        if self.outputType[0] == FORMAT_CPP:
+            #outputFunctions that dont separate inputs and outputs
+            outputFunction(baseName,
+                           current_node,
+                           0,
+                           "")
+        else:
+            #outputFunctions that separate inputs and outputs
+            if package_mon_entries:
+                baseName = baseName+'_MON_t'
+                ret['mon'] = outputFunction(baseName,
+                                            current_node,
+                                            package_mon_entries,
+                                            package_description)
+            if package_ctrl_entries:
+                baseName=baseName+'_CTRL_t'
+                ret['ctrl'] = outputFunction(baseName,
+                                             current_node,
+                                             package_ctrl_entries,
+                                             package_description)
+            
+                def_pkg_name = self.outFileName
+                if self.outputType[0] == FORMAT_YAML:
+                    def_pkg_name = def_pkg_name.replace("PKG.vhd", "PKG_DEF.vhd")
+            
+                ret["ctrl_default"] = \
+                    self.generateDefaultRecord(baseName,
+                                               package_ctrl_entry_defaults,
+                                               def_pkg_name)
+	
         return ret
 
     def generatePkg(self, outFileName=None, ctrl_file_lib="ctrl_lib"):
@@ -462,7 +578,7 @@ class tree(object):
             self.outFileName = outFileBase + "_PKG.vhd"
 
         # write the package header
-        if (self.yml2hdl == 0):
+        if (self.outputType[0] == FORMAT_HDL):
 
             with open(self.outFileName, 'w') as outFile:
                 outFile.write("--This file was auto-generated.\n")
@@ -471,21 +587,20 @@ class tree(object):
                 outFile.write("use IEEE.std_logic_1164.all;\n")
 
                 # yml2hdl libraries
-                if (self.yml2hdl > 0):
+                if (self.outputType[0] == FORMAT_YAML):
                     outFile.write("library shared_lib;\n")
                     outFile.write("use shared_lib.common_ieee.all;\n")
                 outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
                 outFile.close()
-
-        if (self.yml2hdl > 0):
+        elif (self.outputType[0] == FORMAT_YAML):
 
             # write the yaml output header
             def_yaml_name = self.outFileName.replace("PKG.vhd", "PKG.yml")
             with open(def_yaml_name, 'w') as outFile:
-                outFile.write("# yml2hdl v%d\n" % self.yml2hdl)
+                outFile.write("# yml2hdl v%d\n" % self.outputType[1])
                 outFile.write("# This file was auto-generated.\n")
                 outFile.write("# Modifications might be lost.\n")
-                if (self.yml2hdl == 1):
+                if (self.outputType[1] == 1):
                     outFile.write("__config__:\n")
                     outFile.write("    basic_convert_functions : off\n")
                     outFile.write("    packages:\n")
@@ -494,7 +609,7 @@ class tree(object):
                     outFile.write("\n")
                     outFile.write("HDL_Types:\n")
                     outFile.write("\n")
-                if (self.yml2hdl == 2):
+                if (self.outputType[1] == 2):
                     outFile.write("config:\n")
                     outFile.write("  basic_convert_functions : off\n")
                     outFile.write("  packages:\n")
@@ -523,17 +638,24 @@ class tree(object):
 
                 outfile.write("\n\npackage "+outFileBase+"_CTRL_DEF is\n")
 
+        elif (self.outputType[0] == FORMAT_YAML):
+            with open(self.outFileName, 'w') as outFile:
+                outfile.write("#include <RegOffset.hh>");                
+
         # write the package payload
         self.traversePkg()
 
         # write the package trailer
-        if (self.yml2hdl == 0):
+        if (self.outputType[0] == FORMAT_HDL):
             trailer = "\n\nend package "+outFileBase+"_CTRL;"
             pkg = self.outFileName
-        if (self.yml2hdl > 0):
+        elif (self.outputType[0] == FORMAT_YAML):
             trailer = "\nend package "+outFileBase+"_CTRL_DEF;\n"
             pkg = def_pkg_name
-
+        elif (self.outputType[0] == FORMAT_CPP):
+            trailer= "\n};\n"
+            pkg = self.outFileName
+            
         with open(pkg, 'a') as outFile:
             outFile.write(trailer)
             outFile.close()
@@ -764,7 +886,7 @@ class tree(object):
             template_input_file.close()
 
         additionalLibraries = ""
-        if (self.yml2hdl > 0):
+        if (self.outputType[0] == FORMAT_YAML):
             additionalLibraries = "use work.%s_Ctrl_DEF.all;" % outFileBase
 
         # Substitute keywords in the template
