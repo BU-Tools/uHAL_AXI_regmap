@@ -132,17 +132,15 @@ class tree(object):
 
     def generateCPP(self, baseName, current_node, members, description):
         #for now, replace the filename vhd ending with hxx
-        hxxFilename = self.outFileName.replace(".vhd", ".hxx")
-
+#        hppFilename = self.outFileName.replace(".vhd", ".hpp")
+        hppFilename = baseName+".hpp"
         
-        with open(hxxFilename, 'a') as outFile:
+        with open(hppFilename, 'w') as outFile:
             # Generate a c++ class
             className=baseName
-            outFile.write("//==============================================================================\n")
-            outFile.write("//RegClass: %s\n" % (className))
-            outFile.write("//==============================================================================\n")
-            outFile.write("class %s : public RegOffset{\n" %(className))
 
+            includes=["#include <RegOffset.hh>\n"]
+            
             constructor=[]
             publicMembers=[]
             publicDataMembers=[]
@@ -169,6 +167,11 @@ class tree(object):
                     childClassName=baseName+"_"+child.id
                     # Since this is a complex type (another class), we make a private memeber that contains the
                     # class or array of classes
+
+                    #since we are adding a new class that will be in another file, include it.                
+                    includes.append("#include <%s.hpp>\n" % (childClassName))
+
+                    
                     if child.isArray():
 #                        array_size= max(child.entries.keys())- min(child.entries.keys()) + 1
                         privateDataMembers.append("  std::vector<%s> %s;\n" %  (childClassName,child.id))
@@ -236,6 +239,17 @@ class tree(object):
                         publicMembers.append("  };\n")
                 
             constructor.append("  };\n")
+
+            #write out the file
+            outFile.write("#ifndef __%s_HPP__\n" % (className.upper()))
+            outFile.write("#define __%s_HPP__\n" % (className.upper()))
+            outFile.write(''.join(includes))
+            outFile.write("//==============================================================================\n")
+            outFile.write("//RegClass: %s\n" % (className))
+            outFile.write("//==============================================================================\n")
+            outFile.write("class %s : public RegOffset{\n" %(className))
+
+
             outFile.write(''.join(constructor))
             outFile.write("public:\n")
             outFile.write(''.join(publicDataMembers))
@@ -245,6 +259,7 @@ class tree(object):
                 outFile.write(''.join(privateDataMembers))
                 outFile.write(''.join(privateMembers))
             outFile.write("};\n\n\n")
+            outFile.write("#endif\n")
             outFile.close()
         # TODO: return value here?
         return
@@ -646,6 +661,7 @@ class tree(object):
         self.traversePkg()
 
         # write the package trailer
+        trailer=""
         if (self.outputType[0] == FORMAT_HDL):
             trailer = "\n\nend package "+outFileBase+"_CTRL;"
             pkg = self.outFileName
@@ -653,12 +669,12 @@ class tree(object):
             trailer = "\nend package "+outFileBase+"_CTRL_DEF;\n"
             pkg = def_pkg_name
         elif (self.outputType[0] == FORMAT_CPP):
-            trailer= "\n};\n"
-            pkg = self.outFileName
-            
-        with open(pkg, 'a') as outFile:
-            outFile.write(trailer)
-            outFile.close()
+            pass
+
+        if len(trailer) > 0:
+            with open(pkg, 'a') as outFile:
+                outFile.write(trailer)
+                outFile.close()
 
         return
 
@@ -910,7 +926,10 @@ class tree(object):
         RegMapOutput = RegMapOutput.render(substitute_mapping)
 
         # output to file
-        with open(outFileName, 'w') as outFile:
-            outFile.write(RegMapOutput)
-            outFile.close()
+        if self.outputType[0] == FORMAT_CPP:
+            pass
+        else:
+            with open(outFileName, 'w') as outFile:
+                outFile.write(RegMapOutput)
+                outFile.close()
         return
