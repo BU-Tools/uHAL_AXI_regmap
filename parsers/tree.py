@@ -845,6 +845,13 @@ class tree(object):
         else:
             regAddrRange = '0'
 
+        # calculated default allocatedMemoryRange
+        allocatedMemoryRange = 0
+        if regMapSize > 0:
+            allocatedMemoryRange = 2**(math.trunc(math.log((4*regMapSize),2)))
+        else:
+            allocatedMemoryRange = 0
+
         # read the template from template file
         with open(os.path.join(sys.path[0], regMapTemplate)) as template_input_file:
             RegMapOutput = template_input_file.read()
@@ -859,6 +866,7 @@ class tree(object):
         substitute_mapping = {
             "baseName": outFileBase,
             "additionalLibraries": additionalLibraries,
+            "allocatedMemoryRange": allocatedMemoryRange,
             "regMapSize": regMapSize,
             "regAddrRange": regAddrRange,
             "r_ops_output": self.generate_r_ops_output(),
