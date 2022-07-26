@@ -15,7 +15,7 @@ use work.MEM_TEST_Ctrl.all;
 entity MEM_TEST_map is
   generic (
     READ_TIMEOUT     : integer := 2048;
-    ALLOCATED_MEMORY_RANGE : integer
+    ALLOCATED_MEMORY_RANGE : integer := 4096
     );
   port (
     clk_axi          : in  std_logic;
