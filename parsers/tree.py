@@ -848,7 +848,7 @@ class tree(object):
         # calculated default allocatedMemoryRange
         allocatedMemoryRange = 0
         if regMapSize > 0:
-            allocatedMemoryRange = 2**(math.trunc(math.log((4*regMapSize),2)))
+            allocatedMemoryRange = 2**(math.ceil(math.log((4*regMapSize),2)))
         else:
             allocatedMemoryRange = 0
 
