@@ -866,7 +866,7 @@ class tree(object):
         substitute_mapping = {
             "baseName": outFileBase,
             "additionalLibraries": additionalLibraries,
-            "allocatedMemoryRange": allocatedMemoryRange,
+            # "allocatedMemoryRange": allocatedMemoryRange,
             "regMapSize": regMapSize,
             "regAddrRange": regAddrRange,
             "r_ops_output": self.generate_r_ops_output(),
