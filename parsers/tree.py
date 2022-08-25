@@ -791,4 +791,4 @@ class tree(object):
         with open(outFileName, 'w') as outFile:
             outFile.write(RegMapOutput)
             outFile.close()
-        return
+        return regAddrRange
