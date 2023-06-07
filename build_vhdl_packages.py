@@ -77,7 +77,8 @@ def useSimpleParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
         print("Generating:", child.getName())
         mytree = tree.tree(child, yml2hdl=yml2hdl)
         mytree.generatePkg()
-        mytree.generateRegMap(regMapTemplate=regMapTemplate)
+        regmapSize = mytree.generateRegMap(regMapTemplate=regMapTemplate)
+        print("RegmapSize : %s : %s\n" % (child.getName(),regmapSize))
         child.setParent(root)
 
     print("done")
@@ -134,8 +135,8 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
         if i.count('.') == 0:
             mytree = tree.tree(device.getNode(i), log, yml2hdl=yml2hdl)
             mytree.generatePkg()
-            mytree.generateRegMap(regMapTemplate=regMapTemplate)
-
+            regmapSize = mytree.generateRegMap(regMapTemplate=regMapTemplate)
+            print("RegmapSize : %s : %s\n" % (i,regmapSize))
             # test array-type
             # findArrayType(mytree.root)
 

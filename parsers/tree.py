@@ -219,6 +219,7 @@ class tree(object):
             # Generate and print a VHDL record
             outFile.write("  type " + fullName + " is record\n")
             outFile.write("    clk       : std_logic;\n")
+            outFile.write("    reset     : std_logic;\n")
             outFile.write("    enable    : std_logic;\n")
             outFile.write("    wr_enable : std_logic;\n")
             outFile.write("    address   : std_logic_vector(%d-1 downto 0);\n" % addr_size)
@@ -231,6 +232,7 @@ class tree(object):
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
                 outFile.write("  - clk       : [ type: logic ]\n")
+                outFile.write("  - reset     : [ type: logic ]\n")
                 outFile.write("  - enable    : [ type: logic ]\n")
                 outFile.write("  - wr_enable : [ type: logic ]\n")
                 outFile.write("  - address   : [ type: logic, length: %d ]\n" % addr_size)
@@ -301,6 +303,7 @@ class tree(object):
             pad = " "*52
             outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
             outFile.write("%s clk       => '0',\n" % pad)
+            outFile.write("%s reset     => '0',\n" % pad)
             outFile.write("%s enable    => '0',\n" % pad)
             outFile.write("%s wr_enable => '0',\n" % pad)
             outFile.write("%s address   => (others => '0'),\n" % pad)
@@ -367,6 +370,9 @@ class tree(object):
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".clk       <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").clk;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".reset       <=  BRAM_MOSI(" + \
+                        str(self.bramCount-1)+").reset;\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".enable    <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").enable;\n"
@@ -887,4 +893,4 @@ class tree(object):
         with open(outFileName, 'w') as outFile:
             outFile.write(RegMapOutput)
             outFile.close()
-        return
+        return regAddrRange
