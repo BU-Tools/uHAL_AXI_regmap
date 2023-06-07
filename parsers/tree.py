@@ -371,9 +371,9 @@ class tree(object):
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".clk       <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").clk;\n"
-                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
-                        ".reset       <=  BRAM_MOSI(" + \
-                        str(self.bramCount-1)+").reset;\n"
+                    # self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                    #     ".reset       <=  BRAM_MOSI(" + \
+                    #     str(self.bramCount-1)+").reset;\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".enable    <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").enable;\n"
