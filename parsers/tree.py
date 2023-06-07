@@ -97,6 +97,46 @@ class tree(object):
             outFile.close()
             return
 
+    def generate_yaml3(self, baseName, current_node, members, description):
+        """ Generate and print a VHDL record into yml2hdl v{x} format"""
+
+        outFileName = self.outFileName.replace("PKG.vhd", "PKG.yml")
+
+        with open(outFileName, 'a') as outFile:
+
+            outFile.write("- " + baseName+":\n")
+            sorted_members = sorted(members.items(),
+                                    key=lambda item:
+                                    (current_node.getChild(item[0]).address << 32) +
+                                    current_node.getChild(item[0]).mask)
+
+            for memberName, member in sorted_members:
+
+                outFile.write("  - " + memberName + " : { type: ")
+
+                # rename types from VHDL to yml2hdl
+                # (following system verilog everything is a logic type in yml2hdl)
+                member_type = member.replace("std_logic_vector", "logic").replace("std_logic", "logic")
+                member_type = re.sub("\(.*\\)", "", member_type)  # eliminiate the vector size here
+
+                outFile.write(member_type)
+
+                # handle std_logic_vectors.. have to extract the vector size
+                if ("downto" in member):
+                    (high, low) = re.search(r'\((.*?)\)', member).group(1).replace("downto", " ").split()
+                    length = int(high)-int(low)+1
+                    outFile.write(", range : [ "+ str(length) + " - 1 , 0 ]")
+
+                outFile.write(" }\n")
+
+            if current_node.isArray():
+                array_index_string = "array : [ " + str(1 + max(current_node.entries.keys()))+" -1 , 0 ], type : "
+                outFile.write("\n- " + baseName + "_ARRAY: {" + array_index_string + baseName + "}")
+
+            outFile.write("\n\n")
+            outFile.close()
+            return
+
     def generateRecord(self, baseName, current_node, members, description):
         with open(self.outFileName, 'a') as outFile:
             # Generate and print a VHDL record
@@ -187,6 +227,7 @@ class tree(object):
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
         if (self.yml2hdl > 0):
+          if (self.yml2hdl == 2):
             with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
@@ -196,6 +237,18 @@ class tree(object):
                 outFile.write("  - wr_enable : [ type: logic ]\n")
                 outFile.write("  - address   : [ type: logic, length: %d ]\n" % addr_size)
                 outFile.write("  - wr_data   : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("\n")
+                outFile.close()
+          if (self.yml2hdl == 3):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - clk       : { type: logic }\n")
+                # outFile.write("  - reset     : { type: logic }\n")
+                outFile.write("  - enable    : { type: logic }\n")
+                outFile.write("  - wr_enable : { type: logic }\n")
+                outFile.write("  - address   : { type : logic, range : [ %d -1 , 0] }\n" % addr_size)
+                outFile.write("  - wr_data   : { type : logic, range : [ %d -1 , 0] }\n" % data_size)
                 outFile.write("\n")
                 outFile.close()
 
@@ -212,24 +265,46 @@ class tree(object):
             outFile.close()
 
         if (self.yml2hdl > 0):
-            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
-                # Generate and print a VHDL record
-                outFile.write("- %s:\n" % fullName)
-                outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
-                outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
-                outFile.close()
+            if (self.yml2hdl == 1):
+                with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                    # Generate and print a VHDL record
+                    outFile.write("- %s:\n" % fullName)
+                    outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                    outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                    outFile.close()
+            if (self.yml2hdl == 2):
+                with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                    # Generate and print a VHDL record
+                    outFile.write("- %s:\n" % fullName)
+                    outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                    outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                    outFile.close()
+            if (self.yml2hdl == 3):
+                with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                    # Generate and print a VHDL record
+                    outFile.write("- %s:\n" % fullName)
+                    outFile.write("  - rd_data       : { type : logic, range : [ %d -1 , 0] }\n" % data_size)
+                    outFile.write("  - rd_data_valid : { type : logic }\n\n")
+                    outFile.close()
 
         return fullName
 
     def buildDefaultBRAM_MOSI(self, name, addr_size, data_size):
         fullName = name+"_MOSI_t"
         defaultName = "Default_"+fullName
-        with open(self.outFileName, 'a') as outFile:
+        
+        # Move default values to XXX_PKG_DEF.vhd when yml2hdl is generated
+        if (self.yml2hdl > 0):
+          outFileName = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
+        else:
+          outFileName = self.outFileName
+
+        with open(outFileName, 'a') as outFile:
             # Generate and print a VHDL record
             pad = " "*52
             outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
             outFile.write("%s clk       => '0',\n" % pad)
-            outFile.write("%s reset     => '0',\n" % pad)
+            # outFile.write("%s reset     => '0',\n" % pad)
             outFile.write("%s enable    => '0',\n" % pad)
             outFile.write("%s wr_enable => '0',\n" % pad)
             outFile.write("%s address   => (others => '0'),\n" % pad)
@@ -296,9 +371,9 @@ class tree(object):
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".clk       <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").clk;\n"
-                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
-                        ".reset       <=  BRAM_MOSI(" + \
-                        str(self.bramCount-1)+").reset;\n"
+                    # self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                    #     ".reset       <=  BRAM_MOSI(" + \
+                    #     str(self.bramCount-1)+").reset;\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".enable    <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").enable;\n"
@@ -374,7 +449,7 @@ class tree(object):
                 # read write
                 elif child.permission == 'rw':
                     package_ctrl_entries[child.id] = package_entries
-
+                    # print('rw : ' + child.id + " : " + bits)
                     # store data for default signal
                     if "default" in child.parameters:
                         intValue = int(child.parameters["default"], 0)
@@ -390,7 +465,7 @@ class tree(object):
                         else:
                             package_ctrl_entry_defaults[child.id] = \
                                 "'%d'" % (intValue)
-
+                    
                     # no explicit default, default to 0 for std_logic_vectors
                     elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
@@ -401,6 +476,7 @@ class tree(object):
 
                 # write only (action registers)
                 elif child.permission == 'w':
+                    # print('w : ' + child.id + " : " + bits)
 
                     # store data for default signal
                     if "default" in child.parameters:
@@ -422,6 +498,8 @@ class tree(object):
                 func = self.generateRecord
             if self.yml2hdl == 1 or self.yml2hdl == 2:
                 func = self.generate_yaml
+            if self.yml2hdl == 3:
+                func = self.generate_yaml3
 
             ret['mon'] = func(baseName,
                               current_node,
@@ -437,6 +515,8 @@ class tree(object):
                 func = self.generateRecord
             if self.yml2hdl == 1 or self.yml2hdl == 2:
                 func = self.generate_yaml
+            if self.yml2hdl == 3:
+                func = self.generate_yaml3
 
             ret['ctrl'] = func(baseName,
                                current_node,
@@ -479,7 +559,7 @@ class tree(object):
                 # yml2hdl libraries
                 if (self.yml2hdl > 0):
                     outFile.write("library shared_lib;\n")
-                    outFile.write("use shared_lib.common_ieee.all;\n")
+                    outFile.write("use shared_lib.common_ieee_pkg.all;\n")
                 outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
                 outFile.close()
 
@@ -488,7 +568,7 @@ class tree(object):
             # write the yaml output header
             def_yaml_name = self.outFileName.replace("PKG.vhd", "PKG.yml")
             with open(def_yaml_name, 'w') as outFile:
-                outFile.write("# yml2hdl v%d\n" % self.yml2hdl)
+                outFile.write("# yml2hdl v0.%d\n" % self.yml2hdl)
                 outFile.write("# This file was auto-generated.\n")
                 outFile.write("# Modifications might be lost.\n")
                 if (self.yml2hdl == 1):
@@ -508,6 +588,15 @@ class tree(object):
                     outFile.write("    - shared_lib: [common_ieee]\n")
                     outFile.write("\n")
                     outFile.write("hdl:\n")
+                    outFile.write("\n")
+                if (self.yml2hdl == 3):
+                    outFile.write("config:\n")
+                    outFile.write("  basic_functions : False\n")
+                    outFile.write("  packages:\n")
+                    outFile.write("    - ieee: [std_logic_1164, numeric_std, math_real]\n")
+                    outFile.write("    - shared_lib: [common_ieee_pkg]\n")
+                    outFile.write("\n")
+                    outFile.write("types:\n")
                     outFile.write("\n")
 
                 outFile.close()
@@ -763,6 +852,13 @@ class tree(object):
         else:
             regAddrRange = '0'
 
+        # calculated default allocatedMemoryRange
+        allocatedMemoryRange = 0
+        if regMapSize > 0:
+            allocatedMemoryRange = 2**(math.ceil(math.log((4*regMapSize),2)))
+        else:
+            allocatedMemoryRange = 0
+
         # read the template from template file
         with open(os.path.join(sys.path[0], regMapTemplate)) as template_input_file:
             RegMapOutput = template_input_file.read()
@@ -777,6 +873,7 @@ class tree(object):
         substitute_mapping = {
             "baseName": outFileBase,
             "additionalLibraries": additionalLibraries,
+            # "allocatedMemoryRange": allocatedMemoryRange,
             "regMapSize": regMapSize,
             "regAddrRange": regAddrRange,
             "r_ops_output": self.generate_r_ops_output(),

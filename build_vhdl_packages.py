@@ -36,8 +36,10 @@ uhalFlag = True
 
 try:
     import uhal
+    print(f"INFO: uhal library imported")
 except ImportError:
     uhalFlag = False
+    print(f"WARNING: failed to import uhal")
 
 EXIT_CODE_INCORRECT_ARGUMENTS = 1
 EXIT_CODE_ARG_PARSING_ERROR = 2

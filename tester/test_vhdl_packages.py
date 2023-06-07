@@ -60,7 +60,11 @@ class UnitTest(unittest.TestCase):
                                                     test_xml_name)
 
                 wishbone = "../templates/wishbone/template_map.vhd"
-                axi = "../templates/axi_generic/template_map_withbram.vhd"
+
+                if xml == "CM_USP":
+                    axi = "../templates/axi_generic/template_map.vhd"
+                if xml == "MEM_TEST":
+                    axi = "../templates/axi_generic/template_map_withbram.vhd"
 
                 tests = [{"path": "CParserTest",          "parser": "simple", "template": axi},
                          {"path": "UParserTest",          "parser": "uhal",   "template": axi},
@@ -69,12 +73,12 @@ class UnitTest(unittest.TestCase):
 
                 # Generate the VHDL Outputs
                 for test in tests:
-                    for yml2hdl in [True, False]:
+                    for yml2hdl in [3, 0]:
                         if test["parser"] in parser_types:
 
                             print("Tester:: %s (testxml=%s) with %s parser to %s" %
                                 (xml, test_xml_name, test["parser"], test["path"]))
-
+                            print(f"YML2HDL version:{yml2hdl}")
                             parse_xml(test_xml=test_xml_name, HDLPath=test["path"],
                                     parser=test["parser"],
                                     regMapTemplate=test["template"],

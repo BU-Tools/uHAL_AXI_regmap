@@ -6,7 +6,7 @@ use ieee.numeric_std.all;
 use work.AXIRegWidthPkg.all;
 use work.AXIRegPkg.all;
 use work.types.all;
-use work.{{baseName}}_Ctrl.all;
+use work.{{baseName}}_Ctrl_pkg.all;
 {{additionalLibraries}}
 
 
@@ -21,8 +21,8 @@ entity {{baseName}}_map is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-{% if r_ops_output %}    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output %};
-    Ctrl             : out {{baseName}}_Ctrl_t{% endif %}
+{% if r_ops_output %}    Mon              : in  {{baseName}}_Mon_t;{% endif %}
+{% if w_ops_output %}    Ctrl             : out {{baseName}}_Ctrl_t{% endif %}
     );
 end entity {{baseName}}_map;
 architecture behavioral of {{baseName}}_map is

@@ -7,6 +7,20 @@ use ctrl_lib.MEM_TEST_CTRL.all;
 
 
 package MEM_TEST_CTRL_DEF is
+  constant Default_MEM_TEST_MEM1_MOSI_t : MEM_TEST_MEM1_MOSI_t := ( 
+                                                     clk       => '0',
+                                                     enable    => '0',
+                                                     wr_enable => '0',
+                                                     address   => (others => '0'),
+                                                     wr_data   => (others => '0')
+  );
+  constant Default_MEM_TEST_LEVEL_TEST_MEM_MOSI_t : MEM_TEST_LEVEL_TEST_MEM_MOSI_t := ( 
+                                                     clk       => '0',
+                                                     enable    => '0',
+                                                     wr_enable => '0',
+                                                     address   => (others => '0'),
+                                                     wr_data   => (others => '0')
+  );
   constant DEFAULT_MEM_TEST_LEVEL_TEST_CTRL_t : MEM_TEST_LEVEL_TEST_CTRL_t := (
                                                                                THING => (others => '0'),
                                                                                MEM => Default_MEM_TEST_LEVEL_TEST_MEM_MOSI_t

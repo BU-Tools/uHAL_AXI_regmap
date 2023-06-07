@@ -15,7 +15,7 @@ use work.MEM_TEST_Ctrl.all;
 entity MEM_TEST_map is
   generic (
     READ_TIMEOUT     : integer := 2048;
-    ALLOCATED_MEMORY_RANGE : integer
+    ALLOCATED_MEMORY_RANGE : integer := 4096
     );
   port (
     clk_axi          : in  std_logic;
@@ -26,6 +26,8 @@ entity MEM_TEST_map is
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
     
     Mon              : in  MEM_TEST_Mon_t;
+    
+    
     Ctrl             : out MEM_TEST_Ctrl_t
         
     );
