@@ -244,6 +244,7 @@ class tree(object):
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
                 outFile.write("  - clk       : { type: logic }\n")
+                outFile.write("  - reset     : { type: logic }\n")
                 outFile.write("  - enable    : { type: logic }\n")
                 outFile.write("  - wr_enable : { type: logic }\n")
                 outFile.write("  - address   : { type : logic, range : [ %d -1 , 0] }\n" % addr_size)
