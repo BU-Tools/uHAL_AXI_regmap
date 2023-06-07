@@ -244,7 +244,7 @@ class tree(object):
                 # Generate and print a VHDL record
                 outFile.write("- %s:\n" % fullName)
                 outFile.write("  - clk       : { type: logic }\n")
-                outFile.write("  - reset     : { type: logic }\n")
+                # outFile.write("  - reset     : { type: logic }\n")
                 outFile.write("  - enable    : { type: logic }\n")
                 outFile.write("  - wr_enable : { type: logic }\n")
                 outFile.write("  - address   : { type : logic, range : [ %d -1 , 0] }\n" % addr_size)
@@ -304,7 +304,7 @@ class tree(object):
             pad = " "*52
             outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
             outFile.write("%s clk       => '0',\n" % pad)
-            outFile.write("%s reset     => '0',\n" % pad)
+            # outFile.write("%s reset     => '0',\n" % pad)
             outFile.write("%s enable    => '0',\n" % pad)
             outFile.write("%s wr_enable => '0',\n" % pad)
             outFile.write("%s address   => (others => '0'),\n" % pad)
