@@ -244,12 +244,14 @@ elsif BRAM_MISO(1).rd_data_valid = '1' then
   end generate BRAM_asyncs;
   
   Ctrl.MEM1.clk       <=  BRAM_MOSI(0).clk;
+  Ctrl.MEM1.reset       <=  BRAM_MOSI(0).reset;
   Ctrl.MEM1.enable    <=  BRAM_MOSI(0).enable;
   Ctrl.MEM1.wr_enable <=  BRAM_MOSI(0).wr_enable;
   Ctrl.MEM1.address   <=  BRAM_MOSI(0).address(8-1 downto 0);
   Ctrl.MEM1.wr_data   <=  BRAM_MOSI(0).wr_data(13-1 downto 0);
 
   Ctrl.LEVEL_TEST.MEM.clk       <=  BRAM_MOSI(1).clk;
+  Ctrl.LEVEL_TEST.MEM.reset       <=  BRAM_MOSI(1).reset;
   Ctrl.LEVEL_TEST.MEM.enable    <=  BRAM_MOSI(1).enable;
   Ctrl.LEVEL_TEST.MEM.wr_enable <=  BRAM_MOSI(1).wr_enable;
   Ctrl.LEVEL_TEST.MEM.address   <=  BRAM_MOSI(1).address(8-1 downto 0);

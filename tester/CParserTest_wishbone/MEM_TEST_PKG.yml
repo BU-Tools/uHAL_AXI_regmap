@@ -35,6 +35,7 @@ HDL_Types:
 
 - MEM_TEST_MEM1_MOSI_t:
   - clk       : [ type: logic ]
+  - reset     : [ type: logic ]
   - enable    : [ type: logic ]
   - wr_enable : [ type: logic ]
   - address   : [ type: logic, length: 8 ]
@@ -46,6 +47,7 @@ HDL_Types:
 
 - MEM_TEST_LEVEL_TEST_MEM_MOSI_t:
   - clk       : [ type: logic ]
+  - reset     : [ type: logic ]
   - enable    : [ type: logic ]
   - wr_enable : [ type: logic ]
   - address   : [ type: logic, length: 8 ]
