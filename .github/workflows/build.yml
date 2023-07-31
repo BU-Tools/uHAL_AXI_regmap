@@ -17,7 +17,7 @@ jobs:
               LD_LIBRARY_PATH=/opt/cactus/lib:$LD_LIBRARY_PATH make -C tester test
 
   test_parser_python_3p6:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-python@v3
