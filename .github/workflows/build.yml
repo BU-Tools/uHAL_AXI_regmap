@@ -1,5 +1,5 @@
 name: test-regmap
-on: [push]
+on: [push,pull_request]
 jobs:
   test_parser:
     runs-on: ubuntu-latest
