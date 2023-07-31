@@ -8,7 +8,7 @@ jobs:
       - uses: actions/checkout@v1
       - name: "Test regmap"
         run: |
-              curl https://ipbus.web.cern.ch/doc/user/html/_downloads/ipbus-sw.centos7.x86_64.repo -o /etc/yum.repos.d/ipbus-sw.repo
+              curl https://ipbus.web.cern.ch/doc/user/html/_downloads/ipbus-sw.centos7.repo -o /etc/yum.repos.d/ipbus-sw.repo
               yum clean all
               yum -y install cactuscore-uhal-uhal cactuscore-uhal-python36 make git
 
