@@ -1,6 +1,17 @@
-from __future__ import print_function
+
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
+#from __future__ import print_function
 from lxml import etree
 import os
+
+from os.path import exists
 
 
 class ParserTree:
@@ -17,6 +28,8 @@ class ParserTree:
         """
 
         if currentElement is None:
+            if not exists(filepath):
+                raise BaseException("File "+filepath+" not found")
             f = open(filepath, "rb")
             parser = etree.XMLParser(remove_comments=True)
             tree = etree.parse(f, parser=parser)
@@ -52,14 +65,16 @@ class ParserTree:
             self.addressMap[childNode.getAddress()][childNode.getMask()
                                                     ].append(childNode)
 
-            if "module" in currAttr:
+            if "module" in currAttr:                
                 modulePath = currAttr["module"].replace("file://", "")
                 nextPath = os.path.join(os.path.dirname(
                     filepath), modulePath)
+                childNode.setModule(currAttr["module"])
                 # generate rest of tree from reference path
                 self.buildTree(parentNode=childNode,
                                filepath=nextPath, init=False)
             else:
+                childNode.setModule(None)
                 # generate rest of tree from child nodes
                 self.buildTree(parentNode=childNode, filepath=filepath,
                                currentElement=current, init=False)
@@ -79,6 +94,7 @@ class ParserNode:
         self.setSize(size)
 
         self.__parameters = dict()
+        self.__module=None
         self.__fwinfo = dict()
         self.__attrib = dict()
 
@@ -113,6 +129,9 @@ class ParserNode:
 
     def getId(self):
         return self.getName()
+
+    def getModule(self):
+        return self.__module
 
     def getDepth(self):
         return self.__depth
@@ -160,6 +179,9 @@ class ParserNode:
 
     def getFwinfo(self):
         return self.__fwinfo
+
+    def getFwinfoRaw(self):
+        return self.__fwinfoRaw
 
     def getFirmwareInfo(self):
         return self.getFwinfo()
@@ -276,7 +298,10 @@ class ParserNode:
         except:
             print("invalid parameter string:", eleStr)
 
+    def setModule(self, elestr):
+        self.__module = elestr
     def setFwinfo(self, eleStr):
+        self.__fwinfoRaw = eleStr
         if eleStr is None:
             self.__fwinfo = dict()
             return

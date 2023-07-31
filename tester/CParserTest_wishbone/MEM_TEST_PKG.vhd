@@ -34,6 +34,7 @@ package MEM_TEST_CTRL is
 
   type MEM_TEST_MEM1_MOSI_t is record
     clk       : std_logic;
+    reset     : std_logic;
     enable    : std_logic;
     wr_enable : std_logic;
     address   : std_logic_vector(8-1 downto 0);
@@ -45,6 +46,7 @@ package MEM_TEST_CTRL is
   end record MEM_TEST_MEM1_MISO_t;
   constant Default_MEM_TEST_MEM1_MOSI_t : MEM_TEST_MEM1_MOSI_t := ( 
                                                      clk       => '0',
+                                                     reset     => '0',
                                                      enable    => '0',
                                                      wr_enable => '0',
                                                      address   => (others => '0'),
@@ -52,6 +54,7 @@ package MEM_TEST_CTRL is
   );
   type MEM_TEST_LEVEL_TEST_MEM_MOSI_t is record
     clk       : std_logic;
+    reset     : std_logic;
     enable    : std_logic;
     wr_enable : std_logic;
     address   : std_logic_vector(8-1 downto 0);
@@ -63,6 +66,7 @@ package MEM_TEST_CTRL is
   end record MEM_TEST_LEVEL_TEST_MEM_MISO_t;
   constant Default_MEM_TEST_LEVEL_TEST_MEM_MOSI_t : MEM_TEST_LEVEL_TEST_MEM_MOSI_t := ( 
                                                      clk       => '0',
+                                                     reset     => '0',
                                                      enable    => '0',
                                                      wr_enable => '0',
                                                      address   => (others => '0'),

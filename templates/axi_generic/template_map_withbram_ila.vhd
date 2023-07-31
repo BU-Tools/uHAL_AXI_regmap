@@ -11,6 +11,10 @@ use work.types.all;
 use work.{{baseName}}_Ctrl.all;
 {{additionalLibraries}}
 entity {{baseName}}_map is
+  generic (
+    READ_TIMEOUT     : integer := 1024;
+    ALLOCATED_MEMORY_RANGE : integer
+    );
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -18,7 +22,7 @@ entity {{baseName}}_map is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-    {% if r_ops_output %}
+    {% if r_ops_output or bram_count %}
     Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count %};
     Ctrl             : out {{baseName}}_Ctrl_t
     {% endif %}    
@@ -37,10 +41,9 @@ architecture behavioral of {{baseName}}_map is
   {% if bram_count %}
   constant BRAM_COUNT       : integer := {{bram_count}};
   signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
-  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
+--  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
-  signal activeBRAM_index   : integer range 0 to BRAM_COUNT;
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
@@ -53,7 +56,16 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  assert ((4*{{regMapSize}}) < ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity ERROR;
+  assert ((4*{{regMapSize}}) >= ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity NOTE;
   AXIRegBridge : entity work.axiLiteRegBlocking
+    generic map (
+      READ_TIMEOUT => READ_TIMEOUT
+      )
     port map (
       clk_axi     => clk_axi,
       reset_axi_n => reset_axi_n,
@@ -79,18 +91,15 @@ begin  -- architecture behavioral
       localRdAck <= '0';
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
       localRdAck <= '0';
-      {% if bram_count %}delayLatchBRAM <= latchBRAM;{% endif %}
       
       if regRdAck = '1' then
         localRdData_latch <= localRdData;
         localRdAck <= '1';
-      {% for index in range(bram_count) %}
-      elsif delayLatchBRAM({{loop.index0}}) = '1' then
+      {% for index in range(bram_count) %}elsif BRAM_MISO({{loop.index0}}).rd_data_valid = '1' then
         localRdAck <= '1';
         localRdData_latch <= BRAM_MISO({{loop.index0}}).rd_data;
-      {% endfor %}
+{% endfor %}
       end if;
-          
     end if;
   end process latch_reads;
 
@@ -158,34 +167,26 @@ begin  -- architecture behavioral
       probe5    => BRAM_MISO(0).rd_data);
 
 
--------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
   -- BRAM decoding
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
-  read_mux: process (latchBRAM) is
-  begin  -- process read_mux
-    if or_reduce(latchBRAM) = '1' then
-      for iBRAM in 0 to BRAM_COUNT-1 loop
-        if (latchBRAM(iBRAM) = '1') then
-          activeBRAM_index <= iBRAM;
-        end if;
-      end loop;
-    else
-      activeBRAM_index <= BRAM_COUNT;
-    end if;
-  end process read_mux;
 
   BRAM_reads: for iBRAM in 0 to BRAM_COUNT-1 generate
+    latchBRAM(iBRAM) <= BRAM_MOSI(iBRAM).enable;
     BRAM_read: process (clk_axi,reset_axi_n) is
     begin  -- process BRAM_reads
       if reset_axi_n = '0' then
-        latchBRAM(iBRAM) <= '0';
+--        latchBRAM(iBRAM) <= '0';
+        BRAM_MOSI(iBRAM).enable  <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).address <= localAddress;
-        BRAM_MOSI(iBRAM).enable  <= '1';
-        latchBRAM(iBRAM) <= '0';
+--        latchBRAM(iBRAM) <= '0';
+        BRAM_MOSI(iBRAM).enable  <= '0';
         if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
-          latchBRAM(iBRAM) <= localRdReq;
+--          latchBRAM(iBRAM) <= localRdReq;
+--          BRAM_MOSI(iBRAM).enable  <= '1';
+          BRAM_MOSI(iBRAM).enable  <= localRdReq;          
         end if;
       end if;
     end process BRAM_read;

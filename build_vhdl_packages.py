@@ -1,4 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
 """
 
 The script takes an uHAL compliant XML input file
@@ -9,7 +17,7 @@ inefficient with 32b address space), so slaves will appear at many
 locations.
 
 """
-from __future__ import print_function
+#from __future__ import print_function
 from parsers import simpleParser, tree
 from tester import generate_test_xml
 import sys
@@ -67,7 +75,8 @@ def useSimpleParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
         print("Generating:", child.getName())
         mytree = tree.tree(child, yml2hdl=yml2hdl)
         mytree.generatePkg()
-        mytree.generateRegMap(regMapTemplate=regMapTemplate)
+        regmapSize = mytree.generateRegMap(regMapTemplate=regMapTemplate)
+        print("RegmapSize : %s : %s\n" % (child.getName(),regmapSize))
         child.setParent(root)
 
     print("done")
@@ -124,8 +133,8 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
         if i.count('.') == 0:
             mytree = tree.tree(device.getNode(i), log, yml2hdl=yml2hdl)
             mytree.generatePkg()
-            mytree.generateRegMap(regMapTemplate=regMapTemplate)
-
+            regmapSize = mytree.generateRegMap(regMapTemplate=regMapTemplate)
+            print("RegmapSize : %s : %s\n" % (i,regmapSize))
             # test array-type
             # findArrayType(mytree.root)
 
@@ -133,17 +142,7 @@ def useUhalParser(test_xml, HDLPath, regMapTemplate, pkgTemplate="",
 
 
 def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
-                        outpath, xmlpath, name, yml2hdl=0):
-
-    # global read_ops
-    # global write_ops
-    # global action_ops
-    # global readwrite_ops
-    #
-    # read_ops = dict(list())
-    # readwrite_ops = str()
-    # write_ops = dict(list())
-    # action_ops = str()
+                        outpath, xmlpath, name, yml2hdl=0, fallback=False):
 
     if not os.path.exists(outpath):
         print("Creating "+outpath)
@@ -152,7 +151,6 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
         except:
             print("Cannot create "+outpath)
             quit()
-
     # generate unique(ish) filename for testxml
     test_xml = ""
     if len(outpath) > 0:
@@ -166,8 +164,12 @@ def build_vhdl_packages(simple, verbose, debug, mapTemplate, pkgTemplate,
         print("Using Standalone parser")
         parser = "simple"
     else:
-        print("Using uHAL parser")
-        parser = "uhal"
+        if (fallback and not uhalFlag):
+            print("uHAL parser selected but not available... falling back to simple parser")
+            parser = "simple"
+        else:
+            print("Using uHAL parser")
+            parser = "uhal"
 
     parse_xml(test_xml, outpath, mapTemplate, pkgTemplate, yml2hdl=yml2hdl,
               parser=parser, verbose=verbose, debug=debug)
@@ -180,6 +182,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Generate VHDL decoder from XML address table")
     parser.add_argument("--simple","-s",type=str2bool,help="Use simple XML parser (no uHAL)",required=False,default=False)
+    parser.add_argument("--fallback","-f",type=str2bool,help="Allow fallback to the simple parser if uHAL is not available",required=False,default=False)
     parser.add_argument("--verbose","-v",type=str2bool,help="Turn on verbose output",required=False,default=False)
     parser.add_argument("--debug","-d",type=str2bool,help="Turn on debugging info",required=False,default=False)
     parser.add_argument("--yaml","-y",type=int,help="Enable YAML output",required=False,default=0)
@@ -199,5 +202,6 @@ if __name__ == '__main__':
                         args.outpath,
                         args.xmlpath,
                         args.name,
-                        args.yaml
+                        args.yaml,
+                        args.fallback
                         )

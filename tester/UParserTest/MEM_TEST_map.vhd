@@ -10,7 +10,13 @@ use work.types.all;
 use work.BRAMPortPkg.all;
 use work.MEM_TEST_Ctrl.all;
 
+
+
 entity MEM_TEST_map is
+  generic (
+    READ_TIMEOUT     : integer := 2048;
+    ALLOCATED_MEMORY_RANGE : integer
+    );
   port (
     clk_axi          : in  std_logic;
     reset_axi_n      : in  std_logic;
@@ -36,8 +42,8 @@ architecture behavioral of MEM_TEST_map is
 
   
   constant BRAM_COUNT       : integer := 2;
-  signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
-  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
+--  signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
+--  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := (0 => 8
 ,			1 => 8);
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := (0 => x"00000100"
@@ -54,7 +60,17 @@ begin  -- architecture behavioral
   -- AXI 
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
+  assert ((4*1280) <= ALLOCATED_MEMORY_RANGE)
+    report "MEM_TEST: Regmap addressing range " & integer'image(4*1280) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity ERROR;
+  assert ((4*1280) > ALLOCATED_MEMORY_RANGE)
+    report "MEM_TEST: Regmap addressing range " & integer'image(4*1280) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  severity NOTE;
+
   AXIRegBridge : entity work.axiLiteRegBlocking
+    generic map (
+      READ_TIMEOUT => READ_TIMEOUT
+      )
     port map (
       clk_axi     => clk_axi,
       reset_axi_n => reset_axi_n,
@@ -205,15 +221,16 @@ elsif BRAM_MISO(1).rd_data_valid = '1' then
     BRAM_read: process (clk_axi,reset_axi_n) is
     begin  -- process BRAM_reads
       if reset_axi_n = '0' then
-        latchBRAM(iBRAM) <= '0';
+--        latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).address <= localAddress;
-        latchBRAM(iBRAM) <= '0';
+--        latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
         if localAddress(10 downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)(10 downto BRAM_range(iBRAM)) then
-          latchBRAM(iBRAM) <= localRdReq;
-          BRAM_MOSI(iBRAM).enable  <= '1';
+--          latchBRAM(iBRAM) <= localRdReq;
+--          BRAM_MOSI(iBRAM).enable  <= '1';
+          BRAM_MOSI(iBRAM).enable  <= localRdReq;
         end if;
       end if;
     end process BRAM_read;
@@ -227,12 +244,14 @@ elsif BRAM_MISO(1).rd_data_valid = '1' then
   end generate BRAM_asyncs;
   
   Ctrl.MEM1.clk       <=  BRAM_MOSI(0).clk;
+  Ctrl.MEM1.reset       <=  BRAM_MOSI(0).reset;
   Ctrl.MEM1.enable    <=  BRAM_MOSI(0).enable;
   Ctrl.MEM1.wr_enable <=  BRAM_MOSI(0).wr_enable;
   Ctrl.MEM1.address   <=  BRAM_MOSI(0).address(8-1 downto 0);
   Ctrl.MEM1.wr_data   <=  BRAM_MOSI(0).wr_data(13-1 downto 0);
 
   Ctrl.LEVEL_TEST.MEM.clk       <=  BRAM_MOSI(1).clk;
+  Ctrl.LEVEL_TEST.MEM.reset       <=  BRAM_MOSI(1).reset;
   Ctrl.LEVEL_TEST.MEM.enable    <=  BRAM_MOSI(1).enable;
   Ctrl.LEVEL_TEST.MEM.wr_enable <=  BRAM_MOSI(1).wr_enable;
   Ctrl.LEVEL_TEST.MEM.address   <=  BRAM_MOSI(1).address(8-1 downto 0);

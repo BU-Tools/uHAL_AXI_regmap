@@ -1,4 +1,12 @@
-from __future__ import print_function
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
+#from __future__ import print_function
 import getopt
 import sys
 import copy
@@ -60,8 +68,27 @@ class node(object):
         # validate memory alignment for blockrams
         if 'type' in self.fwinfo.keys():
             if "mem" in self.fwinfo['type']:
+                #split the type info by '_'s after mem
+                mem_parameters = self.fwinfo['type'][8:].split("_")
+
+                mem_data_bit_width=mem_parameters[0]
+                mem_addr_size=0
+                
+                if len(mem_parameters) == 1:
+                    #addr size is specified by the size member
+                    mem_addr_size = self.size
+                elif len(mem_parameters) == 2:
+                    #addr size is specified by the mem_parameters
+                    mem_addr_size = int(mem_parameters[1],0)                    
+                else:
+                    self.tree.log.critical(
+                        "Critical: Extra agruments to mem parameter list")
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+                    
+
+
                 # test if size is a power of two
-                size_log2 = math.log(self.size, 2)
+                size_log2 = math.log(mem_addr_size, 2)
                 if size_log2 != int(round(size_log2)):
                     self.tree.log.critical(
                         "Critical: blockram size is not a power of 2!")
@@ -71,17 +98,12 @@ class node(object):
                     self.tree.log.critical("Critical: blockram size too small")
                     sys.exit(EXIT_CODE_NODE_INVALID_MEM)
                 # test if the the range is aligned to its address
-                if self.address % (self.size) != 0:
-                    self.tree.log.critical(
-                        "Critical: blockram address "+str(self.address)+" is not aligned to size"+str(self.size))
-                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
-                # test if the mem line is longenough to hold the bitcount
-                if len(self.fwinfo['type']) <= 3:
-                    self.tree.log.critical(
-                        "Critical: blockram data size is missing")
+                if self.getLocalAddress() % (mem_addr_size) != 0:
+                    print(
+                        "Critical: blockram address "+str(self.address)+" is not aligned to size"+str(mem_addr_size))
                     sys.exit(EXIT_CODE_NODE_INVALID_MEM)
                 # test if the size is in the valid range
-                self.dataWidth = int(self.fwinfo['type'][8:])
+                self.dataWidth = int(mem_data_bit_width,0)
                 if self.dataWidth <= 0 or self.dataWidth > 32:
                     self.tree.log.critical(
                         "Critical: blockram data size of "+self.dataWidth+" is out of range")
@@ -89,7 +111,6 @@ class node(object):
 
                 self.isMem = True
                 self.addrWidth = int(size_log2)
-
         # sort children by address and mask
         self.children = sorted(self.children, key=lambda child: (
             child.address << 32) + child.mask)
@@ -205,12 +226,11 @@ class node(object):
 
     @staticmethod
     def readpermission(permission):
-        import uhal
-        if permission == uhal.NodePermission.READ:
+        if permission == 0x1: #uhal.NodePermission.READ:
             return 'r'
-        elif permission == uhal.NodePermission.READWRITE:
+        elif permission == 0x3: #uhal.NodePermission.READWRITE:
             return 'rw'
-        elif permission == uhal.NodePermission.WRITE:
+        elif permission == 0x2: #uhal.NodePermission.WRITE:
             return 'w'
         else:
             return ""
@@ -262,6 +282,7 @@ class array_node(node):
         self.tree = first_entry.tree
         self.children = first_entry.children
         self.entries = {first_index: first_entry}
+        self.isMem = False
 
     def isCompatible(self, new_entry):
         if not self.id[:new_entry.id.rfind('_')] == new_entry.id[:new_entry.id.rfind('_')]:

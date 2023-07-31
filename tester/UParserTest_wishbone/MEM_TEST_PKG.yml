@@ -33,6 +33,30 @@ HDL_Types:
   - WORD_08 : [ type: logic, length: 32 ]
 
 
+- MEM_TEST_MEM1_MOSI_t:
+  - clk       : [ type: logic ]
+  - reset     : [ type: logic ]
+  - enable    : [ type: logic ]
+  - wr_enable : [ type: logic ]
+  - address   : [ type: logic, length: 8 ]
+  - wr_data   : [ type: logic, length: 13 ]
+
+- MEM_TEST_MEM1_MISO_t:
+  - rd_data       : [ type: logic, length: 13 ]
+  - rd_data_valid : [ type: logic ]
+
+- MEM_TEST_LEVEL_TEST_MEM_MOSI_t:
+  - clk       : [ type: logic ]
+  - reset     : [ type: logic ]
+  - enable    : [ type: logic ]
+  - wr_enable : [ type: logic ]
+  - address   : [ type: logic, length: 8 ]
+  - wr_data   : [ type: logic, length: 13 ]
+
+- MEM_TEST_LEVEL_TEST_MEM_MISO_t:
+  - rd_data       : [ type: logic, length: 13 ]
+  - rd_data_valid : [ type: logic ]
+
 - MEM_TEST_LEVEL_TEST_MON_t:
   - MEM : [ type: MEM_TEST_LEVEL_TEST_MEM_MISO_t ]
 

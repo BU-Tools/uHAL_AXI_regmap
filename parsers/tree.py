@@ -1,3 +1,11 @@
+#################################################################################                                                                                                             
+## Force python3                                                                                                                                                                              
+#################################################################################                                                                                                             
+import sys                                                                                                                                                                                    
+if not sys.version_info.major == 3:                                                                                                                                                           
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
+#################################################################################              
+
 from . import node
 import math
 import os
@@ -7,10 +15,7 @@ import datetime
 
 from jinja2 import Template
 from collections import OrderedDict
-try:
-    from StringIO import StringIO  # for Python 2
-except ImportError:
-    from io import StringIO  # for Python 3
+from io import StringIO  # for Python 3
 
 
 class tree(object):
@@ -81,9 +86,6 @@ class tree(object):
                     (high, low) = re.search(r'\((.*?)\)', member).group(1).replace("downto", " ").split()
                     length = int(high)-int(low)+1
                     outFile.write(", length: "+str(length))
-
-                # if len(description[memberName]) > 0:
-                #     outFile.write(", description: " + description[memberName])
 
                 outFile.write(" ]\n")
 
@@ -177,12 +179,26 @@ class tree(object):
             # Generate and print a VHDL record
             outFile.write("  type " + fullName + " is record\n")
             outFile.write("    clk       : std_logic;\n")
+            outFile.write("    reset     : std_logic;\n")
             outFile.write("    enable    : std_logic;\n")
             outFile.write("    wr_enable : std_logic;\n")
             outFile.write("    address   : std_logic_vector(%d-1 downto 0);\n" % addr_size)
             outFile.write("    wr_data   : std_logic_vector(%d-1 downto 0);\n" % data_size)
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
+        if (self.yml2hdl > 0):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - clk       : [ type: logic ]\n")
+                outFile.write("  - reset     : [ type: logic ]\n")
+                outFile.write("  - enable    : [ type: logic ]\n")
+                outFile.write("  - wr_enable : [ type: logic ]\n")
+                outFile.write("  - address   : [ type: logic, length: %d ]\n" % addr_size)
+                outFile.write("  - wr_data   : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("\n")
+                outFile.close()
+
         return fullName
 
     def buildCustomBRAM_MISO(self, name, addr_size, data_size):
@@ -194,6 +210,15 @@ class tree(object):
             outFile.write("    rd_data_valid   : std_logic;\n")
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
+
+        if (self.yml2hdl > 0):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                outFile.close()
+
         return fullName
 
     def buildDefaultBRAM_MOSI(self, name, addr_size, data_size):
@@ -204,6 +229,7 @@ class tree(object):
             pad = " "*52
             outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
             outFile.write("%s clk       => '0',\n" % pad)
+            outFile.write("%s reset     => '0',\n" % pad)
             outFile.write("%s enable    => '0',\n" % pad)
             outFile.write("%s wr_enable => '0',\n" % pad)
             outFile.write("%s address   => (others => '0'),\n" % pad)
@@ -212,84 +238,67 @@ class tree(object):
             outFile.close()
         return defaultName
 
-    def traversePkg(self, current_node=None, padding='\t'):
-
+    def traversePkg(self, current_node=None, padding='\t', arrayOffsets=[[0,""]]):
         if not current_node:
             current_node = self.root
-        #print(padding+current_node.id+': ['+str([i.id for i in current_node.children]))
+            arrayOffsets=[[0,current_node.id]]
         package_mon_entries = OrderedDict()
         package_ctrl_entries = OrderedDict()
         package_ctrl_entry_defaults = OrderedDict()
         package_description = OrderedDict()
-
+        
         for child in current_node.children:
-
-            if len(child.children) != 0:
-                child_records = self.traversePkg(child, padding+'\t')
+            if child.isMem:
                 package_description[child.id] = ""
-                array_postfix = ["", "_ARRAY"][child.isArray()]
+                # get base name for this node
+                bramName = child.getPath(
+                    expandArray=False).replace('.', '_')
+                # create the MOSI package as a control package and add it to the list
+                package_ctrl_entries[child.id] = \
+                    self.buildCustomBRAM_MOSI(bramName,
+                                              child.addrWidth,
+                                              child.dataWidth)
 
-                # make the records for package entries
-                if 'mon' in child_records:
-                    package_mon_entries[child.id] = child.getPath(
-                        expandArray=False).replace('.', '_')+'_MON_t'+array_postfix
-                if 'ctrl' in child_records:
-                    package_ctrl_entries[child.id] = child.getPath(
-                        expandArray=False).replace('.', '_') + '_CTRL_t'+array_postfix
-                if 'ctrl_default' in child_records:
-                    default_package_entries = "DEFAULT_" + \
-                        child.getPath(expandArray=False).replace(
-                            '.', '_')+"_CTRL_t"
-                    if child.isArray():
-                        default_package_entries = "(others => " + \
-                            default_package_entries+" )"
-                    package_ctrl_entry_defaults[child.id] = default_package_entries
-            else:
-                if child.isMem:
-                    package_description[child.id] = ""
-                    # get base name for this node
-                    bramName = child.getPath(
-                        expandArray=False).replace('.', '_')
-                    # create the MOSI package as a control package and add it to the list
-                    package_ctrl_entries[child.id] = \
-                        self.buildCustomBRAM_MOSI(bramName,
-                                                  child.addrWidth,
-                                                  child.dataWidth)
+                # create the MISO package as a monitor package and add it to the list
+                package_mon_entries[child.id] = \
+                    self.buildCustomBRAM_MISO(bramName,
+                                              child.addrWidth,
+                                              child.dataWidth)
 
-                    # create the MISO package as a monitor package and add it to the list
-                    package_mon_entries[child.id] = \
-                        self.buildCustomBRAM_MISO(bramName,
-                                                  child.addrWidth,
-                                                  child.dataWidth)
-
-                    package_ctrl_entry_defaults[child.id] = \
-                        self.buildDefaultBRAM_MOSI(bramName,
-                                                   child.addrWidth,
-                                                   child.dataWidth)
-
+                package_ctrl_entry_defaults[child.id] = \
+                    self.buildDefaultBRAM_MOSI(bramName,
+                                               child.addrWidth,
+                                               child.dataWidth)
+                #if this was inside of an array, this code will only be run of the first entry of the array
+                #to map the array length number of BRAMs, the arrayOffsets array holds all the additional offsets we will need
+                for struct in arrayOffsets:
+                    offset=struct[0]
+                    #create a BRAM conection for each array index
                     self.bramCount = self.bramCount + 1
-
                     if self.bramCount == 1:
                         self.bramAddrs = "%d => x\"%08X\"" % \
-                            (self.bramCount-1, child.getLocalAddress())
+                            (self.bramCount-1, child.address+offset)
                         self.bramRanges = "%d => %d" % \
                             (self.bramCount-1, child.addrWidth)
-
+                    
                     else:
                         self.bramAddrs = "%s\n,\t\t\t%d => x\"%08X\"" % \
-                            (self.bramAddrs, self.bramCount-1, child.getLocalAddress())
+                            (self.bramAddrs, self.bramCount-1, child.address+offset)
                         self.bramRanges = "%s\n,\t\t\t%d => %d" % \
                             (self.bramRanges, self.bramCount-1, child.addrWidth)
-
-                    bram_end = child.getLocalAddress() + 2**child.addrWidth
+                    
+                    bram_end = child.address + 2**child.addrWidth + offset
                     if bram_end > self.bram_max_addr:
                         self.bram_max_addr = bram_end
-
-                    bramTableName = child.getPath(expandArray=False)
+                    
+                    bramTableName = struct[1]+"."+child.id#child.getPath(expandArray=False)
                     bramTableName = bramTableName[bramTableName.find(".")+1:]
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".clk       <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").clk;\n"
+                    self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
+                        ".reset       <=  BRAM_MOSI(" + \
+                        str(self.bramCount-1)+").reset;\n"
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
                         ".enable    <=  BRAM_MOSI(" + \
                         str(self.bramCount-1)+").enable;\n"
@@ -311,62 +320,96 @@ class tree(object):
                         "  BRAM_MISO("+str(self.bramCount-1)+").rd_data_valid <= Mon." + \
                         bramTableName+".rd_data_valid;\n\n"
 
+            elif len(child.children) != 0:
+                #pass on the list of array offsets from previous array types
+                childArrayOffsets = [];
+                if child.isArray():
+                    #if this is an array type, append to each existing array offset, all the offsets 
+                    #this current arraying will add
+                    for entry in arrayOffsets:
+                        for array_id , array_child in child.entries.items():
+                            childArrayOffsets.append([entry[0] + array_child.address,
+                                                      entry[1]+"."+child.id+"("+str(array_id)+")"])
                 else:
+                    for entry in arrayOffsets:
+                        childArrayOffsets.append([entry[0] + child.address,
+                                                  entry[1] + "." + child.id])
+                
+                if not child.isMem:
+                    child_records = self.traversePkg(child, padding+'\t', childArrayOffsets)
+                package_description[child.id] = ""
+                array_postfix = ["", "_ARRAY"][child.isArray()]
 
-                    bitCount = bin(child.mask)[2:].count('1')
-                    package_entries = ""
-                    if bitCount == 1:
-                        package_entries += "std_logic"
-                    else:
-                        package_entries += "std_logic_vector(" + str(
-                            bitCount-1).rjust(2, ' ') + " downto 0)"
+                # make the records for package entries
+                if 'mon' in child_records:
+                    package_mon_entries[child.id] = child.getPath(
+                        expandArray=False).replace('.', '_')+'_MON_t'+array_postfix
+                if 'ctrl' in child_records:
+                    package_ctrl_entries[child.id] = child.getPath(
+                        expandArray=False).replace('.', '_') + '_CTRL_t'+array_postfix
+                if 'ctrl_default' in child_records:
+                    default_package_entries = "DEFAULT_" + \
+                        child.getPath(expandArray=False).replace(
+                            '.', '_')+"_CTRL_t"
+                    if child.isArray():
+                        default_package_entries = "(others => " + \
+                            default_package_entries+" )"
+                    package_ctrl_entry_defaults[child.id] = default_package_entries
+            else:
+                bitCount = bin(child.mask)[2:].count('1')
+                package_entries = ""
+                if bitCount == 1:
+                    package_entries += "std_logic"
+                else:
+                    package_entries += "std_logic_vector(" + str(
+                        bitCount-1).rjust(2, ' ') + " downto 0)"
 
-                    package_description[child.id] = child.description
-                    bits = child.getBitRange()
+                package_description[child.id] = child.description
+                bits = child.getBitRange()
 
-                    # read only
-                    if child.permission == 'r':
-                        package_mon_entries[child.id] = package_entries
+                # read only
+                if child.permission == 'r':
+                    package_mon_entries[child.id] = package_entries
 
-                    # read write
-                    elif child.permission == 'rw':
-                        package_ctrl_entries[child.id] = package_entries
+                # read write
+                elif child.permission == 'rw':
+                    package_ctrl_entries[child.id] = package_entries
 
-                        # store data for default signal
-                        if "default" in child.parameters:
-                            intValue = int(child.parameters["default"], 0)
-                            if bits.find("downto") > 0:
-                                if bitCount % 4 == 0:
-                                    # hex default
-                                    package_ctrl_entry_defaults[child.id] = \
-                                        "x\"{val:0{width}x}\"".format(val=intValue, width=int(bitCount/4))
-                                else:
-                                    # binary default
-                                    package_ctrl_entry_defaults[child.id] = \
-                                        "\"{val:0{width}b}\"".format (val=intValue, width=int(bitCount))
-                            else:
+                    # store data for default signal
+                    if "default" in child.parameters:
+                        intValue = int(child.parameters["default"], 0)
+                        if bits.find("downto") > 0:
+                            if bitCount % 4 == 0:
+                                # hex default
                                 package_ctrl_entry_defaults[child.id] = \
-                                    "'%d'" % (intValue)
-
-                        # no explicit default, default to 0 for std_logic_vectors
-                        elif bits.find("downto") > 0:
-                            package_ctrl_entry_defaults[child.id] = "(others => '0')"
-
-                        # no explicit default, default to '0' for std_logic
+                                    "x\"{val:0{width}x}\"".format(val=intValue, width=int(bitCount/4))
+                            else:
+                                # binary default
+                                package_ctrl_entry_defaults[child.id] = \
+                                    "\"{val:0{width}b}\"".format (val=intValue, width=int(bitCount))
                         else:
-                            package_ctrl_entry_defaults[child.id] = "'0'"
+                            package_ctrl_entry_defaults[child.id] = \
+                                "'%d'" % (intValue)
 
-                    # write only (action registers)
-                    elif child.permission == 'w':
+                    # no explicit default, default to 0 for std_logic_vectors
+                    elif bits.find("downto") > 0:
+                        package_ctrl_entry_defaults[child.id] = "(others => '0')"
 
-                        # store data for default signal
-                        if "default" in child.parameters:
-                            print("Action register with default value!\n")
-                        elif bits.find("downto") > 0:
-                            package_ctrl_entry_defaults[child.id] = "(others => '0')"
-                        else:
-                            package_ctrl_entry_defaults[child.id] = "'0'"
-                        package_ctrl_entries[child.id] = package_entries
+                    # no explicit default, default to '0' for std_logic
+                    else:
+                        package_ctrl_entry_defaults[child.id] = "'0'"
+
+                # write only (action registers)
+                elif child.permission == 'w':
+
+                    # store data for default signal
+                    if "default" in child.parameters:
+                        print("Action register with default value!\n")
+                    elif bits.find("downto") > 0:
+                        package_ctrl_entry_defaults[child.id] = "(others => '0')"
+                    else:
+                        package_ctrl_entry_defaults[child.id] = "'0'"
+                    package_ctrl_entries[child.id] = package_entries
 
         ret = {}
 
@@ -374,7 +417,6 @@ class tree(object):
 
             baseName = current_node.getPath(
                 expandArray=False).replace('.', '_')+'_MON_t'
-            # print(padding+baseName)
 
             if self.yml2hdl == 0:
                 func = self.generateRecord
@@ -607,6 +649,10 @@ class tree(object):
         if not current_node:
             current_node = self.root
 
+        if current_node.isMem:
+            return
+
+
         # expand the array entries
         expanded_child_list = []
         for child in current_node.children:
@@ -621,8 +667,10 @@ class tree(object):
             if len(child.children) != 0:
                 self.traverseRegMap(child, padding+'\t')
             else:
-                if child.isMem:
+                if child.isMem :
+                    #this is a simple memory, so we don't have any names
                     continue
+
                 bits = child.getBitRange()
 
                 if child.permission == 'r':
@@ -681,6 +729,12 @@ class tree(object):
                     others = "(others => '0')" if bits.find("downto") > 0 else "'0'"
                     self.action_ops += "Ctrl.%s <= %s;\n" % \
                         (child.getPath(includeRoot=False, expandArray=True), others)
+
+                    # default
+                    self.default_ops += "reg_data(%2d)(%s) <= CTRL_t.%s;\n" % \
+                        (child.getLocalAddress(),
+                         bits,
+                         child.getPath(includeRoot=False, expandArray=True))
 
         return
 
@@ -743,4 +797,4 @@ class tree(object):
         with open(outFileName, 'w') as outFile:
             outFile.write(RegMapOutput)
             outFile.close()
-        return
+        return regAddrRange
