@@ -28,6 +28,10 @@ entity {{baseName}}_map is
     Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count %};
     Ctrl             : out {{baseName}}_Ctrl_t
     {% endif %}    
+    {% if r_ops_output or fifo_count %}
+    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or fifo_count %};
+    Ctrl             : out {{baseName}}_Ctrl_t
+    {% endif %}    
     );
 end entity {{baseName}}_map;
 architecture behavioral of {{baseName}}_map is
@@ -42,14 +46,20 @@ architecture behavioral of {{baseName}}_map is
 
   {% if bram_count %}
   constant BRAM_COUNT       : integer := {{bram_count}};
---  signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
---  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := ({{bram_ranges}});
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := ({{bram_addrs}});
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
-  
+
+  {% if fifo_count %}
+  constant FIFO_COUNT       : integer := {{fifo_count}};
+  constant FIFO_range       : int_array_t(0 to FIFO_COUNT-1) := ({{fifo_ranges}});
+  constant FIFO_addr        : slv32_array_t(0 to FIFO_COUNT-1) := ({{fifo_addrs}});
+  signal FIFO_MOSI          : FIFOPortMOSI_array_t(0 to FIFO_COUNT-1);
+  signal FIFO_MISO          : FIFOPortMISO_array_t(0 to FIFO_COUNT-1);
+  {% endif %}
+
   signal reg_data :  slv32_array_t(integer range 0 to {{regMapSize}});
   constant Default_reg_data : slv32_array_t(integer range 0 to {{regMapSize}}) := (others => x"00000000");
 begin  -- architecture behavioral
@@ -101,6 +111,10 @@ begin  -- architecture behavioral
       {% for index in range(bram_count) %}elsif BRAM_MISO({{loop.index0}}).rd_data_valid = '1' then
         localRdAck <= '1';
         localRdData_latch <= BRAM_MISO({{loop.index0}}).rd_data;
+{% endfor %}
+      {% for index in range(fifo_count) %}elsif FIFO_MISO({{loop.index0}}).rd_data_valid = '1' then
+        localRdAck <= '1';
+        localRdData_latch <= FIFO_MISO({{loop.index0}}).rd_data;
 {% endfor %}
       end if;
     end if;
@@ -203,6 +217,52 @@ begin  -- architecture behavioral
       end if;
     end process BRAM_write;
   end generate BRAM_writes;
+{% endif %}
+
+
+{% if fifo_count %}  
+  -------------------------------------------------------------------------------
+  -- FIFO decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+
+  FIFO_reads: for iFIFO in 0 to FIFO_COUNT-1 generate
+    FIFO_read: process (clk_axi,reset_axi_n) is
+    begin  -- process FIFO_reads
+      if reset_axi_n = '0' then
+        FIFO_MOSI(iFIFO).rd_enable  <= '0';
+      elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
+        FIFO_MOSI(iFIFO).rd_enable  <= '0';
+        if localAddress({{regAddrRange}} downto FIFO_range(iFIFO)) = FIFO_addr(iFIFO)({{regAddrRange}} downto FIFO_range(iFIFO)) then
+          FIFO_MOSI(iFIFO).rd_enable  <= localRdReq;
+        end if;
+      end if;
+    end process FIFO_read;
+  end generate FIFO_reads;
+{% endif %}
+
+{% if fifo_count %}
+  FIFO_asyncs: for iFIFO in 0 to FIFO_COUNT-1 generate
+    FIFO_MOSI(iFIFO).clk     <= clk_axi;
+    FIFO_MOSI(iFIFO).wr_data <= localWrData;
+  end generate FIFO_asyncs;
+  
+{{fifo_MOSI_map}}
+{{fifo_MISO_map}}    
+
+  FIFO_writes: for iFIFO in 0 to FIFO_COUNT-1 generate
+    FIFO_write: process (clk_axi,reset_axi_n) is    
+    begin  -- process FIFO_reads
+      if reset_axi_n = '0' then
+        FIFO_MOSI(iFIFO).wr_enable   <= '0';
+      elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
+        FIFO_MOSI(iFIFO).wr_enable   <= '0';
+        if localAddress({{regAddrRange}} downto FIFO_range(iFIFO)) = FIFO_addr(iFIFO)({{regAddrRange}} downto FIFO_range(iFIFO)) then
+          FIFO_MOSI(iFIFO).wr_enable   <= localWrEn;
+        end if;
+      end if;
+    end process FIFO_write;
+  end generate FIFO_writes;
 {% endif %}
 
   

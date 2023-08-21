@@ -50,6 +50,7 @@ class node(object):
         self.address = absolute_address - baseAddress
         self.array_head = None
         self.isMem = False
+        self.isFIFO = False
         self.memWidth = 32
         self.addrWidth = 32
         # add children
@@ -67,7 +68,19 @@ class node(object):
                 sys.exit(EXIT_CODE_NODE_INVALID_ARRAY)
         # validate memory alignment for blockrams
         if 'type' in self.fwinfo.keys():
-            if "mem" in self.fwinfo['type']:
+            if "fifo" in self.fwinfo['type']:
+                #split the type info by '_'s after mem
+                mem_parameters = self.fwinfo['type'][9:].split("_")
+
+                mem_data_bit_width=mem_parameters[0]
+                self.isFIFO = True
+                # test if the size is in the valid range
+                self.dataWidth = int(mem_data_bit_width,0)
+                if self.dataWidth <= 0 or self.dataWidth > 32:
+                    self.tree.log.critical(
+                        "Critical: FIFO data size of "+self.dataWidth+" is out of range")
+                    sys.exit(EXIT_CODE_NODE_INVALID_MEM)
+            elif "mem" in self.fwinfo['type']:
                 #split the type info by '_'s after mem
                 mem_parameters = self.fwinfo['type'][8:].split("_")
 
@@ -283,6 +296,7 @@ class array_node(node):
         self.children = first_entry.children
         self.entries = {first_index: first_entry}
         self.isMem = False
+        self.isFIFO = False
 
     def isCompatible(self, new_entry):
         if not self.id[:new_entry.id.rfind('_')] == new_entry.id[:new_entry.id.rfind('_')]:

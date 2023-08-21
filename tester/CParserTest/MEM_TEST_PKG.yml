@@ -66,6 +66,21 @@ HDL_Types:
   - MEM : [ type: MEM_TEST_LEVEL_TEST_MEM_MOSI_t ]
 
 
+- MEM_TEST_FIFO_MOSI_t:
+  - clk       : [ type: logic ]
+  - reset     : [ type: logic ]
+  - rd_enable : [ type: logic ]
+  - wr_enable : [ type: logic ]
+  - wr_data   : [ type: logic, length: 13 ]
+
+- MEM_TEST_FIFO_MISO_t:
+  - rd_data       : [ type: logic, length: 13 ]
+  - rd_data_valid : [ type: logic ]
+
+  - rd_error      : [ type: logic ]
+
+  - wr_error      : [ type: logic ]
+
 - MEM_TEST_MON_t:
   - GIT_VALID : [ type: logic ]
   - GIT_HASH_1 : [ type: logic, length: 32 ]
@@ -78,11 +93,13 @@ HDL_Types:
   - FPGA : [ type: MEM_TEST_FPGA_MON_t ]
   - MEM1 : [ type: MEM_TEST_MEM1_MISO_t ]
   - LEVEL_TEST : [ type: MEM_TEST_LEVEL_TEST_MON_t ]
+  - FIFO : [ type: MEM_TEST_FIFO_MISO_t ]
 
 
 - MEM_TEST_CTRL_t:
   - THING : [ type: logic, length: 32 ]
   - MEM1 : [ type: MEM_TEST_MEM1_MOSI_t ]
   - LEVEL_TEST : [ type: MEM_TEST_LEVEL_TEST_CTRL_t ]
+  - FIFO : [ type: MEM_TEST_FIFO_MOSI_t ]
 
 

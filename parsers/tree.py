@@ -32,6 +32,9 @@ class tree(object):
         self.bram_MOSI_map = str()
         self.bram_MISO_map = str()
         self.bram_max_addr = int(0)
+        self.fifoCount = 0
+        self.fifo_MOSI_map = str()
+        self.fifo_MISO_map = str()
 
         # package write selection
         # version of yml2hdl tool type yml output
@@ -173,6 +176,72 @@ class tree(object):
 
         return "DEFAULT_"+baseName
 
+    def buildCustomFIFO_MOSI(self, name, data_size):
+        fullName = name+"_MOSI_t"
+        with open(self.outFileName, 'a') as outFile:
+            # Generate and print a VHDL record
+            outFile.write("  type " + fullName + " is record\n")
+            outFile.write("    clk       : std_logic;\n")
+            outFile.write("    reset     : std_logic;\n")
+            outFile.write("    rd_enable : std_logic;\n")
+            outFile.write("    wr_enable : std_logic;\n")
+            outFile.write("    wr_data   : std_logic_vector(%d-1 downto 0);\n" % data_size)
+            outFile.write("  end record " + fullName + ";\n")
+            outFile.close()
+        if (self.yml2hdl > 0):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - clk       : [ type: logic ]\n")
+                outFile.write("  - reset     : [ type: logic ]\n")
+                outFile.write("  - rd_enable : [ type: logic ]\n")
+                outFile.write("  - wr_enable : [ type: logic ]\n")
+                outFile.write("  - wr_data   : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("\n")
+                outFile.close()
+
+        return fullName
+    def buildCustomFIFO_MISO(self, name, data_size):
+        fullName = name+"_MISO_t"
+        with open(self.outFileName, 'a') as outFile:
+            # Generate and print a VHDL record
+            outFile.write("  type " + fullName + " is record\n")
+            outFile.write("    rd_data         : std_logic_vector(%d-1 downto 0);\n" % data_size)
+            outFile.write("    rd_data_valid   : std_logic;\n")
+            outFile.write("    rd_error        : std_logic;\n")
+            outFile.write("    wr_error        : std_logic;\n")
+            outFile.write("  end record " + fullName + ";\n")
+            outFile.close()
+
+        if (self.yml2hdl > 0):
+            with open(self.outFileName.replace(".vhd",".yml"), 'a') as outFile:
+                # Generate and print a VHDL record
+                outFile.write("- %s:\n" % fullName)
+                outFile.write("  - rd_data       : [ type: logic, length: %d ]\n" % data_size)
+                outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
+                outFile.write("  - rd_error      : [ type: logic ]\n\n")
+                outFile.write("  - wr_error      : [ type: logic ]\n\n")
+                
+                outFile.close()
+
+        return fullName
+
+    def buildDefaultFIFO_MOSI(self, name, data_size):
+        fullName = name+"_MOSI_t"
+        defaultName = "Default_"+fullName
+        with open(self.outFileName, 'a') as outFile:
+            # Generate and print a VHDL record
+            pad = " "*52
+            outFile.write("  constant "+defaultName+" : "+fullName+" := ( \n")
+            outFile.write("%s clk       => '0',\n" % pad)
+            outFile.write("%s reset     => '0',\n" % pad)
+            outFile.write("%s rd_enable => '0',\n" % pad)
+            outFile.write("%s wr_enable => '0',\n" % pad)
+            outFile.write("%s wr_data   => (others => '0')\n" % pad)
+            outFile.write("  );\n")
+            outFile.close()
+        return defaultName
+
     def buildCustomBRAM_MOSI(self, name, addr_size, data_size):
         fullName = name+"_MOSI_t"
         with open(self.outFileName, 'a') as outFile:
@@ -248,7 +317,76 @@ class tree(object):
         package_description = OrderedDict()
         
         for child in current_node.children:
-            if child.isMem:
+            if child.isFIFO:
+                package_description[child.id] = ""
+                # get base name for this node
+                fifoName = child.getPath(
+                    expandArray=False).replace('.', '_')
+                # create the MOSI package as a control package and add it to the list
+                package_ctrl_entries[child.id] = \
+                    self.buildCustomFIFO_MOSI(fifoName,
+                                              child.dataWidth)
+                # create the MISO package as a monitor package and add it to the list
+                package_mon_entries[child.id] = \
+                    self.buildCustomFIFO_MISO(fifoName,
+                                              child.dataWidth)
+                package_ctrl_entry_defaults[child.id] = \
+                    self.buildDefaultFIFO_MOSI(fifoName,
+                                               child.dataWidth)
+
+                #if this was inside of an array, this code will only be run of the first entry of the array
+                #to map the array length number of FIFOs, the arrayOffsets array holds all the additional offsets we will need
+                for struct in arrayOffsets:
+                    offset=struct[0]
+                    #create a FIFO conection for each array index
+                    self.fifoCount = self.fifoCount + 1
+                    if self.fifoCount == 1:
+                        self.fifoAddrs = "%d => x\"%08X\"" % \
+                            (self.fifoCount-1, child.address+offset)
+                        self.fifoRanges = "%d => %d" % \
+                            (self.fifoCount-1, child.addrWidth)
+                    
+                    else:
+                        self.fifoAddrs = "%s\n,\t\t\t%d => x\"%08X\"" % \
+                            (self.fifoAddrs, self.fifoCount-1, child.address+offset)
+                        self.fifoRanges = "%s\n,\t\t\t%d => %d" % \
+                            (self.fifoRanges, self.fifoCount-1, child.addrWidth)
+                    
+                    
+                    fifoTableName = struct[1]+"."+child.id#child.getPath(expandArray=False)
+                    fifoTableName = fifoTableName[fifoTableName.find(".")+1:]
+                    self.fifo_MOSI_map = self.fifo_MOSI_map+"  Ctrl."+fifoTableName + \
+                        ".clk       <=  FIFO_MOSI(" + \
+                        str(self.fifoCount-1)+").clk;\n"
+                    self.fifo_MOSI_map = self.fifo_MOSI_map+"  Ctrl."+fifoTableName + \
+                        ".reset       <=  FIFO_MOSI(" + \
+                        str(self.fifoCount-1)+").reset;\n"
+                    self.fifo_MOSI_map = self.fifo_MOSI_map+"  Ctrl."+fifoTableName + \
+                        ".rd_enable    <=  FIFO_MOSI(" + \
+                        str(self.fifoCount-1)+").rd_enable;\n"
+                    self.fifo_MOSI_map = self.fifo_MOSI_map+"  Ctrl."+fifoTableName + \
+                        ".wr_enable <=  FIFO_MOSI(" + \
+                        str(self.fifoCount-1)+").wr_enable;\n"
+                    self.fifo_MOSI_map = self.fifo_MOSI_map+"  Ctrl."+fifoTableName + \
+                        ".wr_data   <=  FIFO_MOSI("+str(self.fifoCount-1) + \
+                        ").wr_data("+str(child.dataWidth)+"-1 downto 0);\n\n"
+                    self.fifo_MISO_map = self.fifo_MISO_map+"  FIFO_MISO("+str(self.fifoCount-1)+").rd_data("+str(
+                        child.dataWidth)+"-1 downto 0) <= Mon."+fifoTableName+".rd_data;\n"
+                    self.fifo_MISO_map = self.fifo_MISO_map + \
+                        "  FIFO_MISO("+str(self.fifoCount-1)+").rd_data(31 downto " + \
+                        str(child.dataWidth)+") <= (others => '0');\n"
+                    self.fifo_MISO_map = self.fifo_MISO_map + \
+                        "  FIFO_MISO("+str(self.fifoCount-1)+").rd_data_valid <= Mon." + \
+                        fifoTableName+".rd_data_valid;\n\n"
+                    self.fifo_MISO_map = self.fifo_MISO_map + \
+                        "  FIFO_MISO("+str(self.fifoCount-1)+").rd_error <= Mon." + \
+                        fifoTableName+".rd_error;\n\n"
+                    self.fifo_MISO_map = self.fifo_MISO_map + \
+                        "  FIFO_MISO("+str(self.fifoCount-1)+").wr_error <= Mon." + \
+                        fifoTableName+".wr_error;\n\n"
+
+                #                asdf
+            elif child.isMem:
                 package_description[child.id] = ""
                 # get base name for this node
                 bramName = child.getPath(
@@ -649,7 +787,7 @@ class tree(object):
         if not current_node:
             current_node = self.root
 
-        if current_node.isMem:
+        if current_node.isMem or current_node.isFIFO:
             return
 
 
@@ -667,7 +805,7 @@ class tree(object):
             if len(child.children) != 0:
                 self.traverseRegMap(child, padding+'\t')
             else:
-                if child.isMem :
+                if child.isMem or child.isFIFO:
                     #this is a simple memory, so we don't have any names
                     continue
 
@@ -789,6 +927,9 @@ class tree(object):
             "bram_addrs": self.bramAddrs,
             "bram_MOSI_map": self.bram_MOSI_map,
             "bram_MISO_map": self.bram_MISO_map,
+            "fifo_count": self.fifoCount,
+            "fifo_MOSI_map": self.fifo_MOSI_map,
+            "fifo_MISO_map": self.fifo_MISO_map,
         }
 
         RegMapOutput = RegMapOutput.render(substitute_mapping)
