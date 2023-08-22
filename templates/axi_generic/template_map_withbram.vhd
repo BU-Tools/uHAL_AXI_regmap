@@ -40,8 +40,13 @@ architecture behavioral of {{baseName}}_map is
   signal localRdData_latch  : slv_32_t;
   signal localWrData        : slv_32_t;
   signal localWrEn          : std_logic;
+  signal localWrAck         : std_logic;
+  signal localWrErr         : std_logic;
+  signal regWrAck           : std_logic;
+  
   signal localRdReq         : std_logic;
   signal localRdAck         : std_logic;
+  signal localRdErr         : std_logic;
   signal regRdAck           : std_logic;
 
   {% if bram_count %}
@@ -90,8 +95,11 @@ begin  -- architecture behavioral
       rd_data     => localRdData_latch,
       wr_data     => localWrData,
       write_en    => localWrEn,
+      write_ack   => localWrAck,
+      write_err   => localWrErr,
       read_req    => localRdReq,
-      read_ack    => localRdAck);
+      read_ack    => localRdAck,
+      read_err    => localRdErr);
 
   -------------------------------------------------------------------------------
   -- Record read decoding
@@ -107,14 +115,15 @@ begin  -- architecture behavioral
       
       if regRdAck = '1' then
         localRdData_latch <= localRdData;
-        localRdAck <= '1';
+        localRdAck        <= '1';
       {% for index in range(bram_count) %}elsif BRAM_MISO({{loop.index0}}).rd_data_valid = '1' then
-        localRdAck <= '1';
+        localRdAck        <= '1';
         localRdData_latch <= BRAM_MISO({{loop.index0}}).rd_data;
 {% endfor %}
       {% for index in range(fifo_count) %}elsif FIFO_MISO({{loop.index0}}).rd_data_valid = '1' then
-        localRdAck <= '1';
+        localRdAck        <= '1';
         localRdData_latch <= FIFO_MISO({{loop.index0}}).rd_data;
+        localRderr        <= FIFO_MISO({{loop.index0}}).rd_error;
 {% endfor %}
       end if;
     end if;
@@ -148,20 +157,47 @@ begin  -- architecture behavioral
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
 
+
+  write_ack_proc : process (clk_axi, reset_axi_n) is
+  begin
+    if reset_axi_n = '0' then                 -- asynchronous reset (active low)
+      localWrAck <= '0';
+      localWrErr <= '0';
+    elsif clk'event and clk_axi = '1' then
+      localWrAck <= '0';
+      localWrErr <= '0';
+      if regWrAck = '1' then
+        localWrAck <= '1';
+        localWrErr <= '0';
+      {% for index in range(bram_count) %}elsif BRAM_MOSI({{loop.index0}}).wr_enable = '1' then
+        localWrAck        <= '1';
+        localWrErr        <= '0'; --assume this just works for now
+{% endfor %}
+      {% for index in range(fifo_count) %}elsif FIFO_MISO({{loop.index0}}).wr_data_valid = '1' then
+        localWrAck        <= '1';
+        localWrErr        <= FIFO_MISO({{loop.index0}}).wr_response;
+{% endfor %}
+      
+    end if;
+  end process write_ack_proc;    
+  
   -- Register mapping to ctrl structures
 {{rw_ops_output}}
 
   reg_writes: process (clk_axi, reset_axi_n) is
   begin  -- process reg_writes
     if reset_axi_n = '0' then                 -- asynchronous reset (active low)
-{{def_ops_output}}
+      {{def_ops_output}}
+      regWrAck <= '0';
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
 {{a_ops_output}}
-      
+      regWrAck <= '0';      
       if localWrEn = '1' then
+        regWrAck <= '1';
         case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
 {{w_ops_output}}
-          when others => null;
+        when others =>
+          regWrAck <= '0';
         end case;
       end if;
     end if;
@@ -179,15 +215,11 @@ begin  -- architecture behavioral
     BRAM_read: process (clk_axi,reset_axi_n) is
     begin  -- process BRAM_reads
       if reset_axi_n = '0' then
---        latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).address <= localAddress;
---        latchBRAM(iBRAM) <= '0';
         BRAM_MOSI(iBRAM).enable  <= '0';
         if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
---          latchBRAM(iBRAM) <= localRdReq;
---          BRAM_MOSI(iBRAM).enable  <= '1';
           BRAM_MOSI(iBRAM).enable  <= localRdReq;
         end if;
       end if;
@@ -212,7 +244,7 @@ begin  -- architecture behavioral
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
         if localAddress({{regAddrRange}} downto BRAM_range(iBRAM)) = BRAM_addr(iBRAM)({{regAddrRange}} downto BRAM_range(iBRAM)) then
-          BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;
+          BRAM_MOSI(iBRAM).wr_enable   <= localWrEn;          
         end if;
       end if;
     end process BRAM_write;
