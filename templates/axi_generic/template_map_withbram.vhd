@@ -24,12 +24,8 @@ entity {{baseName}}_map is
     slave_readMISO   : out AXIReadMISO  := DefaultAXIReadMISO;
     slave_writeMOSI  : in  AXIWriteMOSI;
     slave_writeMISO  : out AXIWriteMISO := DefaultAXIWriteMISO;
-    {% if r_ops_output or bram_count %}
-    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count %};
-    Ctrl             : out {{baseName}}_Ctrl_t
-    {% endif %}    
-    {% if r_ops_output or fifo_count %}
-    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or fifo_count %};
+    {% if r_ops_output or bram_count or fifo_count %}
+    Mon              : in  {{baseName}}_Mon_t{% endif %}{% if w_ops_output or bram_count or fifo_count %};
     Ctrl             : out {{baseName}}_Ctrl_t
     {% endif %}    
     );
