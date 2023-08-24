@@ -55,7 +55,6 @@ architecture behavioral of {{baseName}}_map is
 
   {% if fifo_count %}
   constant FIFO_COUNT       : integer := {{fifo_count}};
-  constant FIFO_range       : int_array_t(0 to FIFO_COUNT-1) := ({{fifo_ranges}});
   constant FIFO_addr        : slv32_array_t(0 to FIFO_COUNT-1) := ({{fifo_addrs}});
   signal FIFO_MOSI          : FIFOPortMOSI_array_t(0 to FIFO_COUNT-1);
   signal FIFO_MISO          : FIFOPortMISO_array_t(0 to FIFO_COUNT-1);
@@ -169,7 +168,7 @@ begin  -- architecture behavioral
         localWrAck        <= '1';
         localWrErr        <= '0'; --assume this just works for now
 {% endfor %}
-      {% for index in range(fifo_count) %}elsif FIFO_MISO({{loop.index0}}).wr_data_valid = '1' then
+      {% for index in range(fifo_count) %}elsif FIFO_MISO({{loop.index0}}).wr_enable = '1' then
         localWrAck        <= '1';
         localWrErr        <= FIFO_MISO({{loop.index0}}).wr_response;
 {% endfor %}
@@ -261,7 +260,7 @@ begin  -- architecture behavioral
         FIFO_MOSI(iFIFO).rd_enable  <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         FIFO_MOSI(iFIFO).rd_enable  <= '0';
-        if localAddress({{regAddrRange}} downto FIFO_range(iFIFO)) = FIFO_addr(iFIFO)({{regAddrRange}} downto FIFO_range(iFIFO)) then
+        if localAddress({{regAddrRange}} downto 0) = FIFO_addr(iFIFO)({{regAddrRange}} downto 0) then
           FIFO_MOSI(iFIFO).rd_enable  <= localRdReq;
         end if;
       end if;
@@ -285,7 +284,7 @@ begin  -- architecture behavioral
         FIFO_MOSI(iFIFO).wr_enable   <= '0';
       elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
         FIFO_MOSI(iFIFO).wr_enable   <= '0';
-        if localAddress({{regAddrRange}} downto FIFO_range(iFIFO)) = FIFO_addr(iFIFO)({{regAddrRange}} downto FIFO_range(iFIFO)) then
+        if localAddress({{regAddrRange}} downto 0) = FIFO_addr(iFIFO)({{regAddrRange}} downto 0) then
           FIFO_MOSI(iFIFO).wr_enable   <= localWrEn;
         end if;
       end if;
