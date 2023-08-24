@@ -379,8 +379,8 @@ class tree(object):
                         "  FIFO_MISO("+str(self.fifoCount-1)+").rd_error <= Mon." + \
                         fifoTableName+".rd_error;\n\n"
                     self.fifo_MISO_map = self.fifo_MISO_map + \
-                        "  FIFO_MISO("+str(self.fifoCount-1)+").wr_data_valid <= Mon." + \
-                        fifoTableName+".wr_data_valid;\n\n"
+                        "  FIFO_MISO("+str(self.fifoCount-1)+").wr_response <= Mon." + \
+                        fifoTableName+".wr_response;\n\n"
                     self.fifo_MISO_map = self.fifo_MISO_map + \
                         "  FIFO_MISO("+str(self.fifoCount-1)+").wr_error <= Mon." + \
                         fifoTableName+".wr_error;\n\n"
