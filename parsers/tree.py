@@ -33,6 +33,7 @@ class tree(object):
         self.bram_MISO_map = str()
         self.bram_max_addr = int(0)
         self.fifoCount = 0
+        self.fifoAddrs = str()
         self.fifo_MOSI_map = str()
         self.fifo_MISO_map = str()
 
@@ -343,14 +344,10 @@ class tree(object):
                     if self.fifoCount == 1:
                         self.fifoAddrs = "%d => x\"%08X\"" % \
                             (self.fifoCount-1, child.address+offset)
-                        self.fifoRanges = "%d => %d" % \
-                            (self.fifoCount-1, child.addrWidth)
                     
                     else:
                         self.fifoAddrs = "%s\n,\t\t\t%d => x\"%08X\"" % \
                             (self.fifoAddrs, self.fifoCount-1, child.address+offset)
-                        self.fifoRanges = "%s\n,\t\t\t%d => %d" % \
-                            (self.fifoRanges, self.fifoCount-1, child.addrWidth)
                     
                     
                     fifoTableName = struct[1]+"."+child.id#child.getPath(expandArray=False)
@@ -928,6 +925,7 @@ class tree(object):
             "bram_MOSI_map": self.bram_MOSI_map,
             "bram_MISO_map": self.bram_MISO_map,
             "fifo_count": self.fifoCount,
+            "fifo_addrs": self.fifoAddrs,
             "fifo_MOSI_map": self.fifo_MOSI_map,
             "fifo_MISO_map": self.fifo_MISO_map,
         }
