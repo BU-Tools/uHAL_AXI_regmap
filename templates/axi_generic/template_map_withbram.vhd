@@ -168,7 +168,7 @@ begin  -- architecture behavioral
         localWrAck        <= '1';
         localWrErr        <= '0'; --assume this just works for now
 {% endfor %}
-      {% for index in range(fifo_count) %}elsif FIFO_MISO({{loop.index0}}).wr_enable = '1' then
+      {% for index in range(fifo_count) %}elsif FIFO_MOSI({{loop.index0}}).wr_enable = '1' then
         localWrAck        <= '1';
         localWrErr        <= FIFO_MISO({{loop.index0}}).wr_response;
 {% endfor %}
