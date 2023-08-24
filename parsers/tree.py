@@ -211,6 +211,7 @@ class tree(object):
             outFile.write("    rd_data_valid   : std_logic;\n")
             outFile.write("    rd_error        : std_logic;\n")
             outFile.write("    wr_error        : std_logic;\n")
+            outFile.write("    wr_response     : std_logic;\n")
             outFile.write("  end record " + fullName + ";\n")
             outFile.close()
 
@@ -222,6 +223,7 @@ class tree(object):
                 outFile.write("  - rd_data_valid : [ type: logic ]\n\n")
                 outFile.write("  - rd_error      : [ type: logic ]\n\n")
                 outFile.write("  - wr_error      : [ type: logic ]\n\n")
+                outFile.write("  - wr_response   : [ type: logic ]\n\n")
                 
                 outFile.close()
 
