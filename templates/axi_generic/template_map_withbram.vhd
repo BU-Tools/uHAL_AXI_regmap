@@ -8,6 +8,7 @@ use work.AXIRegWidthPkg.all;
 use work.AXIRegPkg.all;
 use work.types.all;
 {% if bram_count %}use work.BRAMPortPkg.all;{% endif %}
+{% if fifo_count %}use work.fifoPortPkg.all;{% endif %}
 use work.{{baseName}}_Ctrl.all;
 {{additionalLibraries}}
 
@@ -158,7 +159,7 @@ begin  -- architecture behavioral
     if reset_axi_n = '0' then                 -- asynchronous reset (active low)
       localWrAck <= '0';
       localWrErr <= '0';
-    elsif clk'event and clk_axi = '1' then
+    elsif clk_axi'event and clk_axi = '1' then
       localWrAck <= '0';
       localWrErr <= '0';
       if regWrAck = '1' then
@@ -172,7 +173,7 @@ begin  -- architecture behavioral
         localWrAck        <= '1';
         localWrErr        <= FIFO_MISO({{loop.index0}}).wr_response;
 {% endfor %}
-      
+      end if;
     end if;
   end process write_ack_proc;    
   
