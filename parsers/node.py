@@ -52,6 +52,7 @@ class node(object):
         self.isMem = False
         self.memWidth = 32
         self.addrWidth = 32
+        self.span = 0
         # add children
         for childName in nodeObj.getNodes():
             # TODO: are we filtering out registers whose ID contains a '.'?

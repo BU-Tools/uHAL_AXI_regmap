@@ -25,8 +25,7 @@ class ParserTree:
         two scenarios
         with reference from node, currentElement is None
         without reference, currentElement is last parent element
-        """
-
+        """                
         if currentElement is None:
             if not exists(filepath):
                 raise BaseException("File "+filepath+" not found")
@@ -37,10 +36,13 @@ class ParserTree:
             f.close()
         else:
             root = currentElement
-
+        
         if init:
             parentNode.setName(root.attrib.get("id"))
 
+        #start keeping track of the maximum address seen for this node
+        max_end_address = parentNode.getAddress() + parentNode.getSize()
+        
         queue = []
         for child in root:
             queue.append(child)
@@ -48,7 +50,7 @@ class ParserTree:
         while (len(queue) > 0):
             current = queue.pop(0)
             currAttr = current.attrib
-
+            
             # create childNode from
             childNode = ParserNode(name=currAttr.get("id"), parentNode=parentNode, address=currAttr.get("address"),
                                    mask=currAttr.get("mask"), description=currAttr.get("description"), permission=currAttr.get("permission"),size=currAttr.get("size"), path=filepath)
@@ -65,21 +67,34 @@ class ParserTree:
             self.addressMap[childNode.getAddress()][childNode.getMask()
                                                     ].append(childNode)
 
+            # update the max address for this raw child
+            if childNode.getAddress() + childNode.getSize() > max_end_address:
+                max_end_address=childNode.getAddress() + childNode.getSize()
+                    
+
             if "module" in currAttr:                
                 modulePath = currAttr["module"].replace("file://", "")
                 nextPath = os.path.join(os.path.dirname(
                     filepath), modulePath)
                 childNode.setModule(currAttr["module"])
                 # generate rest of tree from reference path
-                self.buildTree(parentNode=childNode,
-                               filepath=nextPath, init=False)
+                new_end_address = self.buildTree(parentNode=childNode,
+                                                 filepath=nextPath, init=False)
+                # update the max address seen when parsing this module
+                if new_end_address > max_end_address:
+                    max_end_address = new_end_address
             else:
                 childNode.setModule(None)
                 # generate rest of tree from child nodes
-                self.buildTree(parentNode=childNode, filepath=filepath,
-                               currentElement=current, init=False)
+                new_end_address =self.buildTree(parentNode=childNode, filepath=filepath,
+                                                currentElement=current, init=False)
+                # update the max address seen when fully parsing this child
+                if new_end_address > max_end_address:
+                    max_end_address = new_end_address
 
-
+        #Compute the total size of this node and store it in span
+        parentNode.span = max_end_address - parentNode.getAddress()
+        return max_end_address
 class ParserNode:
     def __init__(self, name=None, parentNode=None, address=None, mask=None, description=None, permission=None, size=None, path=""):
         self.setParent(parentNode)
