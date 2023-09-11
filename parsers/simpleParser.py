@@ -272,6 +272,8 @@ class ParserNode:
         
         if addr is None:
             addr = 0
+        if addr == "auto":
+            addr = 0
         addr=int(str(addr),0)
 
         if self.__parent is not None:
@@ -281,6 +283,8 @@ class ParserNode:
 
     def setRelativeAddress(self, addr):
         if addr is None:
+            addr = 0
+        if addr == "auto":
             addr = 0
         self.__relativeAddress = int(str(addr),0)
 
