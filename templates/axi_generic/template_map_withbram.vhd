@@ -15,7 +15,8 @@ use work.{{baseName}}_Ctrl.all;
 entity {{baseName}}_map is
   generic (
     READ_TIMEOUT     : integer := 2048;
-    ALLOCATED_MEMORY_RANGE : integer
+    ALLOCATED_MEMORY_RANGE : integer;
+    INCLUDE_ILA      : boolean := false
     );
   port (
     clk_axi          : in  std_logic;
@@ -67,7 +68,8 @@ begin  -- architecture behavioral
 
   AXIRegBridge : entity work.axiLiteRegBlocking
     generic map (
-      READ_TIMEOUT => READ_TIMEOUT
+      READ_TIMEOUT => READ_TIMEOUT,
+      INCLUDE_ILA  => INCLUDE_ILA
       )
     port map (
       clk_axi     => clk_axi,
