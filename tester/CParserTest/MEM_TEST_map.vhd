@@ -28,6 +28,10 @@ entity MEM_TEST_map is
     Mon              : in  MEM_TEST_Mon_t;
     Ctrl             : out MEM_TEST_Ctrl_t
         
+    
+    Mon              : in  MEM_TEST_Mon_t;
+    Ctrl             : out MEM_TEST_Ctrl_t
+        
     );
 end entity MEM_TEST_map;
 architecture behavioral of MEM_TEST_map is
@@ -42,8 +46,6 @@ architecture behavioral of MEM_TEST_map is
 
   
   constant BRAM_COUNT       : integer := 2;
---  signal latchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
---  signal delayLatchBRAM          : std_logic_vector(BRAM_COUNT-1 downto 0);
   constant BRAM_range       : int_array_t(0 to BRAM_COUNT-1) := (0 => 8
 ,			1 => 8);
   constant BRAM_addr        : slv32_array_t(0 to BRAM_COUNT-1) := (0 => x"00000100"
@@ -51,7 +53,15 @@ architecture behavioral of MEM_TEST_map is
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   
+
   
+  constant FIFO_COUNT       : integer := 1;
+  constant FIFO_range       : int_array_t(0 to FIFO_COUNT-1) := ();
+  constant FIFO_addr        : slv32_array_t(0 to FIFO_COUNT-1) := ();
+  signal FIFO_MOSI          : FIFOPortMOSI_array_t(0 to FIFO_COUNT-1);
+  signal FIFO_MISO          : FIFOPortMISO_array_t(0 to FIFO_COUNT-1);
+  
+
   signal reg_data :  slv32_array_t(integer range 0 to 1280);
   constant Default_reg_data : slv32_array_t(integer range 0 to 1280) := (others => x"00000000");
 begin  -- architecture behavioral
@@ -106,6 +116,10 @@ begin  -- architecture behavioral
 elsif BRAM_MISO(1).rd_data_valid = '1' then
         localRdAck <= '1';
         localRdData_latch <= BRAM_MISO(1).rd_data;
+
+      elsif FIFO_MISO(0).rd_data_valid = '1' then
+        localRdAck <= '1';
+        localRdData_latch <= FIFO_MISO(0).rd_data;
 
       end if;
     end if;
@@ -281,6 +295,66 @@ elsif BRAM_MISO(1).rd_data_valid = '1' then
       end if;
     end process BRAM_write;
   end generate BRAM_writes;
+
+
+
+  
+  -------------------------------------------------------------------------------
+  -- FIFO decoding
+  -------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------
+
+  FIFO_reads: for iFIFO in 0 to FIFO_COUNT-1 generate
+    FIFO_read: process (clk_axi,reset_axi_n) is
+    begin  -- process FIFO_reads
+      if reset_axi_n = '0' then
+        FIFO_MOSI(iFIFO).rd_enable  <= '0';
+      elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
+        FIFO_MOSI(iFIFO).rd_enable  <= '0';
+        if localAddress(10 downto FIFO_range(iFIFO)) = FIFO_addr(iFIFO)(10 downto FIFO_range(iFIFO)) then
+          FIFO_MOSI(iFIFO).rd_enable  <= localRdReq;
+        end if;
+      end if;
+    end process FIFO_read;
+  end generate FIFO_reads;
+
+
+
+  FIFO_asyncs: for iFIFO in 0 to FIFO_COUNT-1 generate
+    FIFO_MOSI(iFIFO).clk     <= clk_axi;
+    FIFO_MOSI(iFIFO).wr_data <= localWrData;
+  end generate FIFO_asyncs;
+  
+  Ctrl.FIFO.clk       <=  FIFO_MOSI(0).clk;
+  Ctrl.FIFO.reset       <=  FIFO_MOSI(0).reset;
+  Ctrl.FIFO.rd_enable    <=  FIFO_MOSI(0).rd_enable;
+  Ctrl.FIFO.wr_enable <=  FIFO_MOSI(0).wr_enable;
+  Ctrl.FIFO.wr_data   <=  FIFO_MOSI(0).wr_data(13-1 downto 0);
+
+
+  FIFO_MISO(0).rd_data(13-1 downto 0) <= Mon.FIFO.rd_data;
+  FIFO_MISO(0).rd_data(31 downto 13) <= (others => '0');
+  FIFO_MISO(0).rd_data_valid <= Mon.FIFO.rd_data_valid;
+
+  FIFO_MISO(0).rd_error <= Mon.FIFO.rd_error;
+
+  FIFO_MISO(0).wr_error <= Mon.FIFO.wr_error;
+
+    
+
+  FIFO_writes: for iFIFO in 0 to FIFO_COUNT-1 generate
+    FIFO_write: process (clk_axi,reset_axi_n) is    
+    begin  -- process FIFO_reads
+      if reset_axi_n = '0' then
+        FIFO_MOSI(iFIFO).wr_enable   <= '0';
+      elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
+        FIFO_MOSI(iFIFO).wr_enable   <= '0';
+        if localAddress(10 downto FIFO_range(iFIFO)) = FIFO_addr(iFIFO)(10 downto FIFO_range(iFIFO)) then
+          FIFO_MOSI(iFIFO).wr_enable   <= localWrEn;
+        end if;
+      end if;
+    end process FIFO_write;
+  end generate FIFO_writes;
 
 
   

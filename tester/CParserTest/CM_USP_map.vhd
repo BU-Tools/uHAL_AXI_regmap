@@ -28,6 +28,10 @@ entity CM_USP_map is
     Mon              : in  CM_USP_Mon_t;
     Ctrl             : out CM_USP_Ctrl_t
         
+    
+    Mon              : in  CM_USP_Mon_t;
+    Ctrl             : out CM_USP_Ctrl_t
+        
     );
 end entity CM_USP_map;
 architecture behavioral of CM_USP_map is
@@ -41,7 +45,9 @@ architecture behavioral of CM_USP_map is
   signal regRdAck           : std_logic;
 
   
+
   
+
   signal reg_data :  slv32_array_t(integer range 0 to 346);
   constant Default_reg_data : slv32_array_t(integer range 0 to 346) := (others => x"00000000");
 begin  -- architecture behavioral
@@ -90,6 +96,7 @@ begin  -- architecture behavioral
       if regRdAck = '1' then
         localRdData_latch <= localRdData;
         localRdAck <= '1';
+      
       
       end if;
     end if;
@@ -932,6 +939,11 @@ begin  -- architecture behavioral
       end if;
     end if;
   end process reg_writes;
+
+
+
+
+
 
 
 

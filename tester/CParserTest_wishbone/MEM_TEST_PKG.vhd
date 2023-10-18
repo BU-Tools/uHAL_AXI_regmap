@@ -87,6 +87,26 @@ package MEM_TEST_CTRL is
                                                                                THING => (others => '0'),
                                                                                MEM => Default_MEM_TEST_LEVEL_TEST_MEM_MOSI_t
                                                                               );
+  type MEM_TEST_FIFO_MOSI_t is record
+    clk       : std_logic;
+    reset     : std_logic;
+    rd_enable : std_logic;
+    wr_enable : std_logic;
+    wr_data   : std_logic_vector(13-1 downto 0);
+  end record MEM_TEST_FIFO_MOSI_t;
+  type MEM_TEST_FIFO_MISO_t is record
+    rd_data         : std_logic_vector(13-1 downto 0);
+    rd_data_valid   : std_logic;
+    rd_error        : std_logic;
+    wr_error        : std_logic;
+  end record MEM_TEST_FIFO_MISO_t;
+  constant Default_MEM_TEST_FIFO_MOSI_t : MEM_TEST_FIFO_MOSI_t := ( 
+                                                     clk       => '0',
+                                                     reset     => '0',
+                                                     rd_enable => '0',
+                                                     wr_enable => '0',
+                                                     wr_data   => (others => '0')
+  );
   type MEM_TEST_MON_t is record
     GIT_VALID                  :std_logic;   
     GIT_HASH_1                 :std_logic_vector(31 downto 0);
@@ -99,6 +119,7 @@ package MEM_TEST_CTRL is
     FPGA                       :MEM_TEST_FPGA_MON_t;          
     MEM1                       :MEM_TEST_MEM1_MISO_t;         
     LEVEL_TEST                 :MEM_TEST_LEVEL_TEST_MON_t;    
+    FIFO                       :MEM_TEST_FIFO_MISO_t;         
   end record MEM_TEST_MON_t;
 
 
@@ -106,13 +127,15 @@ package MEM_TEST_CTRL is
     THING                      :std_logic_vector(31 downto 0);
     MEM1                       :MEM_TEST_MEM1_MOSI_t;         
     LEVEL_TEST                 :MEM_TEST_LEVEL_TEST_CTRL_t;   
+    FIFO                       :MEM_TEST_FIFO_MOSI_t;         
   end record MEM_TEST_CTRL_t;
 
 
   constant DEFAULT_MEM_TEST_CTRL_t : MEM_TEST_CTRL_t := (
                                                          THING => (others => '0'),
                                                          MEM1 => Default_MEM_TEST_MEM1_MOSI_t,
-                                                         LEVEL_TEST => DEFAULT_MEM_TEST_LEVEL_TEST_CTRL_t
+                                                         LEVEL_TEST => DEFAULT_MEM_TEST_LEVEL_TEST_CTRL_t,
+                                                         FIFO => Default_MEM_TEST_FIFO_MOSI_t
                                                         );
 
 
