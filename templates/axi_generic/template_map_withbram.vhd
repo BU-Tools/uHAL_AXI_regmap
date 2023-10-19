@@ -16,6 +16,7 @@ use work.{{baseName}}_Ctrl.all;
 entity {{baseName}}_map is
   generic (
     READ_TIMEOUT     : integer := 2048;
+    WRITE_TIMEOUT    : integer := 2048;
     ALLOCATED_MEMORY_RANGE : integer;
     INCLUDE_ILA      : boolean := false
     );
@@ -80,6 +81,7 @@ begin  -- architecture behavioral
   AXIRegBridge : entity work.axiLiteRegBlocking
     generic map (
       READ_TIMEOUT => READ_TIMEOUT,
+      WRITE_TIMEOUT => WRITE_TIMEOUT,
       INCLUDE_ILA  => INCLUDE_ILA
       )
     port map (
