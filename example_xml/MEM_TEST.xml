@@ -34,5 +34,7 @@
     <node id="THING"  address="0x0" permission="rw"/>
     <node id="MEM" address="0x100" mode="incremental" size="0x100" permission="rw" fwinfo="type=mem13"/>
   </node>
+
+  <node id="FIFO" address="0x1000" permission="rw" fwinfo="type=fifo13"/>
   
 </node>

@@ -1,0 +1,20 @@
+<node id="plXVC">
+  <node id="LENGTH"  address="0x0" permission="rw" description="Length of shift operation in bits"/>
+  <node id="TMS_VECTOR"  address="0x1" permission="rw" description="Test Mode Select (TMS) Bit Vector"/>
+  <node id="TDI_VECTOR"  address="0x2" permission="rw" description="Test Data In (TDI) Bit Vector"/>
+  <node id="TDO_VECTOR"  address="0x3" permission="r" description="Test Data Out (TDO) Capture Vector"/>
+  <node id="GO"  address="0x4" mask="0x1" permission="w" description="Enable shift operation"/>
+  <node id="BUSY" address="0x4" mask="0x2" permission="r" description="Cable is operating"/>
+  <node id="LOCK" address="0x5" permission="rw" description="Lock cable from access" parameters="Table=ZYNQ_OS;Row=_2;Column=_3;Status=1;Show=nz"/>
+  <node id="REMOTE" address="0x6">
+    <node id="IP"   address="0x0" mask="0xFFFFFFFF" permission="rw" description="IP of remote connection" parameters="Table=ZYNQ_OS;Row=_2;Column=_4;Status=1;Format=IP;Show=nz"/>
+    <node id="PORT_NUMBER" address="0x1" mask="0x0000FFFF" permission="rw" description="port of remote connection"/>
+  </node>
+  <node id="PS_RST" address="0x8" mask="0x1" permission="rw" description="PS reset" parameters="Table=ZYNQ_OS;Row=_2;Column=_3;Status=1;Show=z;Format=t_0_RESET;default=0x1"/>
+  <node id="FIFO_MODE" address="0x9">
+    <node id="ENABLE" address="0x0" mask="0x1" permission="rw" description="Enable FIFO mode"/>
+    <node id="LENGTH"      address="0x1" fwinfo="type=fifo13" permission="w" description="Length of shift operation in bits"/>
+    <node id="TMS_VECTOR"  address="0x2" fwinfo="type=fifo13" permission="w" description="Test Mode Select (TMS) Bit Vector"/>
+    <node id="TDI_VECTOR"  address="0x3" fwinfo="type=fifo13" permission="w" description="Test Data In (TDI) Bit Vector"/>
+  </node>
+</node>
