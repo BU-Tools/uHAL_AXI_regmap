@@ -25,7 +25,11 @@ import os
 import time
 import logging
 import argparse
-import distutils.util
+# import distutils.util
+if sys.version_info >= (3, 10):
+    from setuptools._distutils.util import strtobool
+else:
+    from distutils.util import strtobool
 
 try:
     from StringIO import StringIO  # for Python 2
@@ -47,7 +51,7 @@ EXIT_CODE_NODE_ADDRESS_ERRORS = 3
 
 
 def str2bool(v):
-    return bool(distutils.util.strtobool(v))
+    return bool(strtobool(v))
 
 
 def findArrayType(n):
