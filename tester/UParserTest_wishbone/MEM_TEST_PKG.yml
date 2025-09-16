@@ -5,7 +5,7 @@ config:
   basic_functions : False
   packages:
     - ieee: [std_logic_1164, numeric_std, math_real]
-    - shared_lib: [common_ieee_pkg]
+    - types_lib: [common_ieee_pkg]
 
 types:
 

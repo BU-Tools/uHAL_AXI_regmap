@@ -558,8 +558,8 @@ class tree(object):
 
                 # yml2hdl libraries
                 if (self.yml2hdl > 0):
-                    outFile.write("library shared_lib;\n")
-                    outFile.write("use shared_lib.common_ieee_pkg.all;\n")
+                    outFile.write("library types_lib;\n")
+                    outFile.write("use types_lib.common_ieee_pkg.all;\n")
                 outFile.write("\n\npackage "+outFileBase+"_CTRL is\n")
                 outFile.close()
 
@@ -575,7 +575,7 @@ class tree(object):
                     outFile.write("__config__:\n")
                     outFile.write("    basic_convert_functions : off\n")
                     outFile.write("    packages:\n")
-                    outFile.write("    shared_lib:\n")
+                    outFile.write("    types_lib:\n")
                     outFile.write("        - common_ieee_pkg\n")
                     outFile.write("\n")
                     outFile.write("HDL_Types:\n")
@@ -585,7 +585,7 @@ class tree(object):
                     outFile.write("  basic_convert_functions : off\n")
                     outFile.write("  packages:\n")
                     outFile.write("    - ieee: [std_logic_1164, numeric_std, math_real]\n")
-                    outFile.write("    - shared_lib: [common_ieee]\n")
+                    outFile.write("    - types_lib: [common_ieee]\n")
                     outFile.write("\n")
                     outFile.write("hdl:\n")
                     outFile.write("\n")
@@ -594,7 +594,7 @@ class tree(object):
                     outFile.write("  basic_functions : False\n")
                     outFile.write("  packages:\n")
                     outFile.write("    - ieee: [std_logic_1164, numeric_std, math_real]\n")
-                    outFile.write("    - shared_lib: [common_ieee_pkg]\n")
+                    outFile.write("    - types_lib: [common_ieee_pkg]\n")
                     outFile.write("\n")
                     outFile.write("types:\n")
                     outFile.write("\n")
@@ -613,8 +613,8 @@ class tree(object):
                 outfile.write("library %s;\n" % ctrl_file_lib)
                 outfile.write("use %s.%s_CTRL.all;\n" % (ctrl_file_lib, outFileBase))
 
-                # outfile.write("library shared_lib;\n")
-                # outfile.write("use shared_lib.common_ieee.all;\n")
+                # outfile.write("library types_lib;\n")
+                # outfile.write("use types_lib.common_ieee.all;\n")
 
                 outfile.write("\n\npackage "+outFileBase+"_CTRL_DEF is\n")
 
