@@ -1,10 +1,10 @@
-#################################################################################                                                                                                             
-## Force python3                                                                                                                                                                              
-#################################################################################                                                                                                             
-import sys                                                                                                                                                                                    
-if not sys.version_info.major == 3:                                                                                                                                                           
-    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")                                                                                         
-#################################################################################              
+#################################################################################
+## Force python3
+#################################################################################
+import sys
+if not sys.version_info.major == 3:
+    raise BaseException("Wrong Python version detected.  Please ensure that you are using Python 3.")
+#################################################################################
 
 from . import node
 import math
@@ -292,7 +292,7 @@ class tree(object):
     def buildDefaultBRAM_MOSI(self, name, addr_size, data_size):
         fullName = name+"_MOSI_t"
         defaultName = "Default_"+fullName
-        
+
         # Move default values to XXX_PKG_DEF.vhd when yml2hdl is generated
         if (self.yml2hdl > 0):
           outFileName = self.outFileName.replace("PKG.vhd", "PKG_DEF.vhd")
@@ -321,7 +321,7 @@ class tree(object):
         package_ctrl_entries = OrderedDict()
         package_ctrl_entry_defaults = OrderedDict()
         package_description = OrderedDict()
-        
+
         for child in current_node.children:
             if child.isMem:
                 package_description[child.id] = ""
@@ -355,17 +355,17 @@ class tree(object):
                             (self.bramCount-1, child.address+offset)
                         self.bramRanges = "%d => %d" % \
                             (self.bramCount-1, child.addrWidth)
-                    
+
                     else:
                         self.bramAddrs = "%s\n,\t\t\t%d => x\"%08X\"" % \
                             (self.bramAddrs, self.bramCount-1, child.address+offset)
                         self.bramRanges = "%s\n,\t\t\t%d => %d" % \
                             (self.bramRanges, self.bramCount-1, child.addrWidth)
-                    
+
                     bram_end = child.address + 2**child.addrWidth + offset
                     if bram_end > self.bram_max_addr:
                         self.bram_max_addr = bram_end
-                    
+
                     bramTableName = struct[1]+"."+child.id#child.getPath(expandArray=False)
                     bramTableName = bramTableName[bramTableName.find(".")+1:]
                     self.bram_MOSI_map = self.bram_MOSI_map+"  Ctrl."+bramTableName + \
@@ -399,7 +399,7 @@ class tree(object):
                 #pass on the list of array offsets from previous array types
                 childArrayOffsets = [];
                 if child.isArray():
-                    #if this is an array type, append to each existing array offset, all the offsets 
+                    #if this is an array type, append to each existing array offset, all the offsets
                     #this current arraying will add
                     for entry in arrayOffsets:
                         for array_id , array_child in child.entries.items():
@@ -409,7 +409,7 @@ class tree(object):
                     for entry in arrayOffsets:
                         childArrayOffsets.append([entry[0] + child.address,
                                                   entry[1] + "." + child.id])
-                
+
                 if not child.isMem:
                     child_records = self.traversePkg(child, padding+'\t', childArrayOffsets)
                 package_description[child.id] = ""
@@ -465,7 +465,7 @@ class tree(object):
                         else:
                             package_ctrl_entry_defaults[child.id] = \
                                 "'%d'" % (intValue)
-                    
+
                     # no explicit default, default to 0 for std_logic_vectors
                     elif bits.find("downto") > 0:
                         package_ctrl_entry_defaults[child.id] = "(others => '0')"
@@ -839,12 +839,19 @@ class tree(object):
 
         # calculate regMapSize and regAddrRange
         regMapSize = 0
+        print(self.read_ops)
 
         if len(self.read_ops) and max(self.read_ops, key=int) > regMapSize:
+            print("Max read ops:")
+            print(max(self.read_ops, key=int))
             regMapSize = max(self.read_ops, key=int)
         if len(self.write_ops) and max(self.write_ops, key=int) > regMapSize:
+            print("Max write ops:")
+            print(max(self.write_ops, key=int))
             regMapSize = max(self.write_ops, key=int)
         if self.bram_max_addr > regMapSize:
+            print("Max bram addr:")
+            print(self.bram_max_addr)
             regMapSize = self.bram_max_addr
 
         if regMapSize > 0:

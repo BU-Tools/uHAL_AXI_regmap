@@ -15,7 +15,7 @@ use work.{{baseName}}_Ctrl.all;
 entity {{baseName}}_map is
   generic (
     READ_TIMEOUT     : integer := 2048;
-    ALLOCATED_MEMORY_RANGE : integer 
+    ALLOCATED_MEMORY_RANGE : integer
     );
   port (
     clk_axi          : in  std_logic;
@@ -29,7 +29,7 @@ entity {{baseName}}_map is
     {% endif %}
     {% if w_ops_output or bram_count %}
     Ctrl             : out {{baseName}}_Ctrl_t
-    {% endif %}    
+    {% endif %}
     );
 end entity {{baseName}}_map;
 architecture behavioral of {{baseName}}_map is
@@ -51,20 +51,20 @@ architecture behavioral of {{baseName}}_map is
   signal BRAM_MOSI          : BRAMPortMOSI_array_t(0 to BRAM_COUNT-1);
   signal BRAM_MISO          : BRAMPortMISO_array_t(0 to BRAM_COUNT-1);
   {% endif %}
-  
+
   signal reg_data :  slv32_array_t(integer range 0 to {{regMapSize}});
   constant Default_reg_data : slv32_array_t(integer range 0 to {{regMapSize}}) := (others => x"00000000");
 begin  -- architecture behavioral
 
   -------------------------------------------------------------------------------
-  -- AXI 
+  -- AXI
   -------------------------------------------------------------------------------
   -------------------------------------------------------------------------------
-  assert ((4*{{regMapSize}}) <= ALLOCATED_MEMORY_RANGE)
-    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  assert ((3*{{regMapSize}}) <= ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(3*{{regMapSize}}) & " is outside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
   severity ERROR;
-  assert ((4*{{regMapSize}}) > ALLOCATED_MEMORY_RANGE)
-    report "{{baseName}}: Regmap addressing range " & integer'image(4*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
+  assert ((3*{{regMapSize}}) > ALLOCATED_MEMORY_RANGE)
+    report "{{baseName}}: Regmap addressing range " & integer'image(3*{{regMapSize}}) & " is inside of AXI mapped range " & integer'image(ALLOCATED_MEMORY_RANGE)
   severity NOTE;
 
   AXIRegBridge : entity work.axiLiteRegBlocking
@@ -96,7 +96,7 @@ begin  -- architecture behavioral
       localRdAck <= '0';
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
       localRdAck <= '0';
-      
+
       if regRdAck = '1' then
         localRdData_latch <= localRdData;
         localRdAck <= '1';
@@ -108,7 +108,7 @@ begin  -- architecture behavioral
     end if;
   end process latch_reads;
 
-  
+
   reads: process (clk_axi,reset_axi_n) is
   begin  -- process latch_reads
     if reset_axi_n = '0' then
@@ -119,7 +119,7 @@ begin  -- architecture behavioral
       if localRdReq = '1' then
         regRdAck  <= '1';
         case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
-          
+
 {{r_ops_output}}
 
           when others =>
@@ -145,7 +145,7 @@ begin  -- architecture behavioral
 {{def_ops_output}}
     elsif clk_axi'event and clk_axi = '1' then  -- rising clock edge
 {{a_ops_output}}
-      
+
       if localWrEn = '1' then
         case to_integer(unsigned(localAddress({{regAddrRange}} downto 0))) is
 {{w_ops_output}}
@@ -157,7 +157,7 @@ begin  -- architecture behavioral
 {% endif %}
 
 
-{% if bram_count %}  
+{% if bram_count %}
   -------------------------------------------------------------------------------
   -- BRAM decoding
   -------------------------------------------------------------------------------
@@ -188,12 +188,12 @@ begin  -- architecture behavioral
     BRAM_MOSI(iBRAM).clk     <= clk_axi;
     BRAM_MOSI(iBRAM).wr_data <= localWrData;
   end generate BRAM_asyncs;
-  
+
 {{bram_MOSI_map}}
-{{bram_MISO_map}}    
+{{bram_MISO_map}}
 
   BRAM_writes: for iBRAM in 0 to BRAM_COUNT-1 generate
-    BRAM_write: process (clk_axi,reset_axi_n) is    
+    BRAM_write: process (clk_axi,reset_axi_n) is
     begin  -- process BRAM_reads
       if reset_axi_n = '0' then
         BRAM_MOSI(iBRAM).wr_enable   <= '0';
@@ -207,5 +207,5 @@ begin  -- architecture behavioral
   end generate BRAM_writes;
 {% endif %}
 
-  
+
 end architecture behavioral;
