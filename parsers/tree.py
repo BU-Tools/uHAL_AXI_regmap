@@ -839,19 +839,12 @@ class tree(object):
 
         # calculate regMapSize and regAddrRange
         regMapSize = 0
-        print(self.read_ops)
 
         if len(self.read_ops) and max(self.read_ops, key=int) > regMapSize:
-            print("Max read ops:")
-            print(max(self.read_ops, key=int))
             regMapSize = max(self.read_ops, key=int)
         if len(self.write_ops) and max(self.write_ops, key=int) > regMapSize:
-            print("Max write ops:")
-            print(max(self.write_ops, key=int))
             regMapSize = max(self.write_ops, key=int)
         if self.bram_max_addr > regMapSize:
-            print("Max bram addr:")
-            print(self.bram_max_addr)
             regMapSize = self.bram_max_addr
 
         if regMapSize > 0:
